@@ -1,0 +1,267 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../courses/courses_screen.dart';
+import '../student_feed/student_feed_screen.dart';
+import '../discussions/group_discussions_screen.dart';
+import '../queries/queries_screen.dart';
+import '../guidance/guidance_screen.dart';
+import '../ai_chat/ai_chat_screen.dart';
+import 'widgets/feature_card.dart';
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  static const routeName = '/home';
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String? userEmail;
+  String? username;
+
+  static const List<Map<String, String>> _features = [
+    {
+      'title': 'Courses',
+      'subtitle':
+          'Explore our comprehensive course materials, exam patterns, and more.',
+      'image': 'assets/images/courses.jpg',
+    },
+    {
+      'title': 'Student Profiles',
+      'subtitle': 'Customize your profile and contribute to our community.',
+      'image': 'assets/images/profiles.jpg',
+    },
+    {
+      'title': 'Group Discussions',
+      'subtitle': 'Join discussions on various topics and share your insights.',
+      'image': 'assets/images/discussions.jpg',
+    },
+    {
+      'title': 'One-to-one Guidance',
+      'subtitle': 'Request personalized academic support from peers.',
+      'image': 'assets/images/guidance.jpg',
+    },
+    {
+      'title': 'Queries Section',
+      'subtitle': 'Post questions and receive answers from the community.',
+      'image': 'assets/images/queries.jpg',
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email;
+    setState(() {
+      userEmail = email;
+      username = email?.split('@').first;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scaffoldKey = GlobalKey<ScaffoldState>();
+
+    return Scaffold(
+      key: scaffoldKey,
+      backgroundColor: Colors.purple.shade50,
+      drawer: _buildSideDrawer(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () => scaffoldKey.currentState?.openDrawer(),
+                    borderRadius: BorderRadius.circular(24),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.account_circle_outlined, size: 28),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'CampusConnect',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Container(
+                color: Colors.purple.shade50,
+                child: ListView.separated(
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemCount: _features.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  itemBuilder: (ctx, i) {
+                    final f = _features[i];
+                    return FeatureCard(
+                      title: f['title']!,
+                      subtitle: f['subtitle']!,
+                      imagePath: f['image']!,
+                      onTap: () {
+                        switch (f['title']) {
+                          case 'Courses':
+                            Navigator.pushNamed(
+                                context, CoursesScreen.routeName);
+                            break;
+                          case 'Student Profiles':
+                            Navigator.pushNamed(
+                                context, StudentFeedScreen.routeName);
+                            break;
+                          case 'Group Discussions':
+                            Navigator.pushNamed(
+                                context, GroupDiscussionsScreen.routeName);
+                            break;
+                          case 'One-to-one Guidance':
+                            Navigator.pushNamed(
+                                context, GuidanceScreen.routeName);
+                            break;
+                          case 'Queries Section':
+                            Navigator.pushNamed(
+                                context, QueriesScreen.routeName);
+                            break;
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: SizedBox(
+        width: 56,
+        height: 56,
+        child: FloatingActionButton(
+          elevation: 6,
+          backgroundColor: Colors.white,
+          shape: const CircleBorder(),
+          onPressed: () => Navigator.pushNamed(context, AIChatScreen.routeName),
+          child: const Text(
+            '4TY',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildSideDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(color: Colors.blue.shade100),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 32,
+                  backgroundImage: AssetImage('assets/images/profiles.jpg'),
+                ),
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        username ?? 'Loading...',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userEmail ?? '',
+                        style: const TextStyle(
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // SECTION 1
+          _drawerRowItem(Icons.person_outline, 'My Profile', () {}),
+          const Divider(),
+
+          // SECTION 2
+          _drawerRowItem(Icons.inbox_outlined, 'My Inbox', () {}),
+          _drawerRowItem(Icons.group_outlined, 'My Group', () {}),
+          _drawerRowItem(Icons.menu_book_outlined, 'My Courses', () {}),
+          _drawerRowItem(Icons.question_answer_outlined, 'My Queries', () {}),
+          _drawerRowItem(Icons.settings_outlined, 'Settings', () {}),
+          const Divider(),
+
+          // SECTION 3
+          _drawerRowItem(Icons.logout, 'Logout', () async {
+            await FirebaseAuth.instance.signOut();
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+              (route) => false,
+            );
+          }),
+          _drawerRowItem(Icons.help_outline, '4TY Help Center', () {}),
+
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 24.0),
+            child: Text(
+              '© 2025 4TY',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerRowItem(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 22),
+            const SizedBox(width: 16), // custom spacing between icon and text
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

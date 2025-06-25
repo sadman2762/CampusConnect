@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/" />
+
+  <meta charset="UTF-8" />
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible"/>
+  <meta name="description" content="CampusConnect"/>
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+  <meta name="apple-mobile-web-app-title" content="CampusConnect"/>
+  <link rel="apple-touch-icon" href="icons/Icon-192.png"/>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>CampusConnect</title>
+  <link rel="manifest" href="manifest.json"/>
+
+  <!-- ✅ Firebase Modular JS SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDACK35Xo4ezDV-dVeqdCf7E2_msrdcP2Y",
+      authDomain: "campusconnect-a8cf1.firebaseapp.com",
+      projectId: "campusconnect-a8cf1",
+      storageBucket: "campusconnect-a8cf1.firebasestorage.app",
+      messagingSenderId: "1076807725976",
+      appId: "1:1076807725976:web:14b15d575e3c1294b431ed",
+      measurementId: "G-M105RSTTWQ"
+    };
+
+    // Initialize Firebase services
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+  </script>
+</head>
+<body>
+  <!-- 🚀 Bootstrap your Flutter app -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

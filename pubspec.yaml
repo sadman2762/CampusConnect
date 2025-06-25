@@ -1,0 +1,45 @@
+name: campus_connect
+description: "A new Flutter project."
+publish_to: 'none' # Prevent accidental publishing to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.13.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^0.13.5
+
+  firebase_core: ^2.30.0
+  firebase_auth: ^4.17.7
+  cloud_firestore: ^4.15.7
+  cloud_functions: ^4.6.5
+
+
+dev_dependencies:
+  flutter_lints:    ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/ai_icon.jpg
+    - assets/images/courses.jpg
+    - assets/images/discussions.jpg
+    - assets/images/guidance.jpg
+    - assets/images/queries.jpg
+    - assets/images/profiles.jpg
+    - assets/images/student1.jpg
+    - assets/images/student2.jpg
+    - assets/images/student3.jpg
+    - assets/images/student4.jpg
+    - assets/images/student5.jpg
+    - assets/images/google_logo.webp
+
