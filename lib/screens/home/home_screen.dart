@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+// Screens
 import '../courses/courses_screen.dart';
 import '../student_feed/student_feed_screen.dart';
 import '../discussions/group_discussions_screen.dart';
 import '../queries/queries_screen.dart';
 import '../guidance/guidance_screen.dart';
 import '../ai_chat/ai_chat_screen.dart';
+import '../profile/profile_screen.dart'; // ✅ Profile screen import
+
+// Widgets
 import 'widgets/feature_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -209,7 +213,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // SECTION 1
-          _drawerRowItem(Icons.person_outline, 'My Profile', () {}),
+          _drawerRowItem(Icons.person_outline, 'My Profile', () {
+            Navigator.pushNamed(
+                context, ProfileScreen.routeName); // ✅ Navigation
+          }),
           const Divider(),
 
           // SECTION 2
@@ -252,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             Icon(icon, size: 22),
-            const SizedBox(width: 16), // custom spacing between icon and text
+            const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,

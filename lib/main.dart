@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'firebase_options.dart'; // ✅ Add this import
+// Firebase options
+import 'firebase_options.dart';
 
+// Screens
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/register_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -14,11 +15,14 @@ import 'screens/discussions/group_discussions_screen.dart';
 import 'screens/queries/queries_screen.dart';
 import 'screens/guidance/guidance_screen.dart';
 import 'screens/ai_chat/ai_chat_screen.dart';
+import 'screens/profile/profile_screen.dart';
+
+// Theme
+import 'theme/theme.dart'; // ✅ Import your theme file
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Initialize Firebase using the manually created options
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -34,9 +38,9 @@ class CampusConnectApp extends StatelessWidget {
     return MaterialApp(
       title: 'Campus Connect',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: AppTheme.lightTheme, // ✅ Apply custom pinkish theme
 
-      // Decide initial screen based on authentication state
+      // Initial screen based on Firebase Auth state
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -52,7 +56,7 @@ class CampusConnectApp extends StatelessWidget {
         },
       ),
 
-      // Named routes for in-app navigation
+      // Named routes for navigation
       routes: {
         LoginScreen.routeName: (_) => const LoginScreen(),
         RegisterScreen.routeName: (_) => const RegisterScreen(),
@@ -63,15 +67,18 @@ class CampusConnectApp extends StatelessWidget {
         QueriesScreen.routeName: (_) => const QueriesScreen(),
         GuidanceScreen.routeName: (_) => const GuidanceScreen(),
         AIChatScreen.routeName: (_) => const AIChatScreen(),
+        ProfileScreen.routeName: (_) => const ProfileScreen(),
       },
 
-      // Global error widget
+      // Global error handler
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {
-          return Center(
-            child: Text(
-              'Something went wrong!\n${details.exception}',
-              textAlign: TextAlign.center,
+          return Scaffold(
+            body: Center(
+              child: Text(
+                'Something went wrong!\n${details.exception}',
+                textAlign: TextAlign.center,
+              ),
             ),
           );
         };
