@@ -1,6 +1,5 @@
-// lib/screens/guidance/guidance_screen.dart
-
 import 'package:flutter/material.dart';
+import '../profile/profile_screen.dart';
 
 class GuidanceScreen extends StatefulWidget {
   static const routeName = '/guidance';
@@ -18,7 +17,6 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     vsync: this,
   );
 
-  // 8 chat peers
   static const _chatPeers = [
     {
       'name': 'Alice Nguyen',
@@ -70,51 +68,49 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     },
   ];
 
-  // 8 guidance requests
   static const _requests = [
     {
       'name': 'Ibrahim Khan',
       'avatar': 'assets/images/student9.jpg',
-      'request': 'Help with stats?',
+      'request': 'Help with stats?'
     },
     {
       'name': 'Julia Roberts',
       'avatar': 'assets/images/student10.jpg',
-      'request': 'Proofread essay?',
+      'request': 'Proofread essay?'
     },
     {
       'name': 'Kira Yamamoto',
       'avatar': 'assets/images/student11.jpg',
-      'request': 'Need chem tutor.',
+      'request': 'Need chem tutor.'
     },
     {
       'name': 'Leo Smith',
       'avatar': 'assets/images/student12.jpg',
-      'request': 'Project guidance.',
+      'request': 'Project guidance.'
     },
     {
       'name': 'Mia Lopez',
       'avatar': 'assets/images/student13.jpg',
-      'request': 'Calculus help.',
+      'request': 'Calculus help.'
     },
     {
       'name': 'Nina Patel',
       'avatar': 'assets/images/student14.jpg',
-      'request': 'Debug my code.',
+      'request': 'Debug my code.'
     },
     {
       'name': 'Oscar Müller',
       'avatar': 'assets/images/student15.jpg',
-      'request': 'Time management tips?',
+      'request': 'Time management tips?'
     },
     {
       'name': 'Priya Singh',
       'avatar': 'assets/images/student16.jpg',
-      'request': 'Lecture notes please.',
+      'request': 'Lecture notes please.'
     },
   ];
 
-  // Top-peer rankings
   static const _peerRankings = [
     {'name': 'Alice Nguyen', 'score': '9.8'},
     {'name': 'Emma García', 'score': '9.5'},
@@ -142,18 +138,11 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-
-      // Left drawer: Profile menu
-      drawer: _buildProfileDrawer(),
-
-      // Right drawer: Top peer rankings
       endDrawer: _buildRankingDrawer(),
-
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
               child: Text(
@@ -163,8 +152,6 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 ),
               ),
             ),
-
-            // Subtitle
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -172,10 +159,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 style: textTheme.bodyMedium,
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Search bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -191,10 +175,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // TabBar: Chats / Requests
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TabBar(
@@ -211,13 +192,10 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 ],
               ),
             ),
-
-            // Content
             Expanded(
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // Chat list
                   ListView.separated(
                     padding: const EdgeInsets.all(24),
                     itemCount: _chatPeers.length,
@@ -238,8 +216,6 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                       );
                     },
                   ),
-
-                  // Request list
                   ListView.separated(
                     padding: const EdgeInsets.all(24),
                     itemCount: _requests.length,
@@ -262,8 +238,6 @@ class _GuidanceScreenState extends State<GuidanceScreen>
           ],
         ),
       ),
-
-      // 4TY FAB
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.white,
         elevation: 6,
@@ -272,14 +246,12 @@ class _GuidanceScreenState extends State<GuidanceScreen>
           '4TY',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
             color: Colors.black87,
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // 4-icon footer nav
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
@@ -288,31 +260,25 @@ class _GuidanceScreenState extends State<GuidanceScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Home
               IconButton(
                 icon: const Icon(Icons.home_outlined),
                 onPressed: () => Navigator.pop(context),
               ),
-
-              // Chats tab
               IconButton(
                 icon: const Icon(Icons.chat_bubble_outline),
                 color: _tabController.index == 0 ? theme.primaryColor : null,
                 onPressed: () => setState(() => _tabController.index = 0),
               ),
-
-              const SizedBox(width: 48), // FAB gap
-              // Requests tab
+              const SizedBox(width: 48),
               IconButton(
                 icon: const Icon(Icons.how_to_reg_outlined),
                 color: _tabController.index == 1 ? theme.primaryColor : null,
                 onPressed: () => setState(() => _tabController.index = 1),
               ),
-
-              // Rankings drawer
               IconButton(
-                icon: const Icon(Icons.leaderboard_outlined),
-                onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+                icon: const Icon(Icons.person_outline),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ProfileScreen.routeName),
               ),
             ],
           ),
@@ -321,74 +287,32 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     );
   }
 
-  // --------------------
-  // Drawers
-  // --------------------
-
-  Widget _buildProfileDrawer() => Drawer(
-    child: Column(
-      children: [
-        DrawerHeader(
-          decoration: BoxDecoration(color: Colors.blue.shade100),
-          child: Row(
-            children: const [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: AssetImage('assets/images/student1.jpg'),
+  Widget _buildRankingDrawer() => Drawer(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Top Peers',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 16),
-              Text('John Doe\njohndoe@example.com'),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _peerRankings.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, i) {
+                    final pr = _peerRankings[i];
+                    return ListTile(
+                      title: Text(pr['name']!),
+                      trailing: Text(pr['score']!),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
-        _drawerTile(Icons.person_outline, 'My Profile'),
-        _drawerTile(Icons.inbox_outlined, 'My Inbox'),
-        _drawerTile(Icons.logout, 'Logout'),
-        _drawerTile(Icons.help_outline, 'Help Center'),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Text(
-            '© 2025 4TY',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildRankingDrawer() => Drawer(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Peers',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: _peerRankings.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (_, i) {
-                final pr = _peerRankings[i];
-                return ListTile(
-                  title: Text(pr['name']!),
-                  trailing: Text(pr['score']!),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  ListTile _drawerTile(IconData icon, String label) => ListTile(
-    leading: Icon(icon),
-    title: Text(label),
-    onTap: () => Navigator.pop(context),
-  );
+      );
 }
