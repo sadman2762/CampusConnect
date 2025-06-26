@@ -1,6 +1,7 @@
 // lib/screens/discussions/group_discussions_screen.dart
 
 import 'package:flutter/material.dart';
+import '../profile/profile_screen.dart'; // Added for navigation
 
 class GroupDiscussionsScreen extends StatelessWidget {
   static const routeName = '/discussions';
@@ -67,7 +68,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _buildProfileDrawer(context),
       endDrawer: _buildGroupsDrawer(context),
       body: SafeArea(
         child: Padding(
@@ -87,8 +87,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-
-              // remove `const` here so we can use a non-const fillColor
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Search for Discussions',
@@ -102,7 +100,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -138,7 +135,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -155,7 +151,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   child: const Text('Generate Summary'),
                 ),
               ),
-
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -190,26 +185,19 @@ class GroupDiscussionsScreen extends StatelessWidget {
           ),
         ),
       ),
-
-      floatingActionButton: SizedBox(
-        width: 56,
-        height: 56,
-        child: FloatingActionButton(
-          elevation: 6,
-          backgroundColor: Colors.white,
-          onPressed: () => Navigator.pushNamed(context, '/ai_chat'),
-          child: const Text(
-            '4TY',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: Colors.black87,
-            ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.white,
+        onPressed: () => Navigator.pushNamed(context, '/ai_chat'),
+        child: const Text(
+          '4TY',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.black87,
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
@@ -233,7 +221,8 @@ class GroupDiscussionsScreen extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ProfileScreen.routeName),
               ),
             ],
           ),
@@ -242,77 +231,44 @@ class GroupDiscussionsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileDrawer(BuildContext c) => Drawer(
-    child: Column(
-      children: [
-        DrawerHeader(
-          decoration: BoxDecoration(color: Colors.blue.shade100),
-          child: Row(
-            children: const [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: AssetImage('assets/images/student1.jpg'),
+  Widget _buildGroupsDrawer(BuildContext c) => Drawer(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'My Groups',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 16),
-              Text('John Doe\njohndoe@example.com'),
+              const SizedBox(height: 12),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search groups',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: Colors.grey.shade200,
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(8)),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _myGroups.length,
+                  itemBuilder: (_, i) => ListTile(
+                    leading: const Icon(Icons.group),
+                    title: Text(_myGroups[i]),
+                    onTap: () => Navigator.pop(c),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        _drawerTile(Icons.person_outline, 'My Profile'),
-        _drawerTile(Icons.inbox_outlined, 'My Inbox'),
-        _drawerTile(Icons.logout, 'Logout'),
-        _drawerTile(Icons.help_outline, 'Help Center'),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Text(
-            '© 2025 4TY',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _buildGroupsDrawer(BuildContext c) => Drawer(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'My Groups',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          // also make this non-const so fillColor can be dynamic
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search groups',
-              prefixIcon: const Icon(Icons.search),
-              filled: true,
-              fillColor: Colors.grey.shade200,
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _myGroups.length,
-              itemBuilder: (_, i) => ListTile(
-                leading: const Icon(Icons.group),
-                title: Text(_myGroups[i]),
-                onTap: () => Navigator.pop(c),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
+      );
 
   void _showRankings(BuildContext c) {
     showModalBottomSheet(
@@ -343,12 +299,8 @@ class GroupDiscussionsScreen extends StatelessWidget {
       ),
     );
   }
-
-  ListTile _drawerTile(IconData icon, String label) =>
-      ListTile(leading: Icon(icon), title: Text(label), onTap: () {});
 }
 
-/// A simple message bubble widget in `widgets/message_bubble.dart`
 class _MessageBubble extends StatelessWidget {
   final String author, avatarPath, text;
   const _MessageBubble({
