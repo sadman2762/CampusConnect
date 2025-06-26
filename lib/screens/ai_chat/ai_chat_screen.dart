@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+
 import '../../services/gemini_service.dart';
 import '../../utils/markdown_utils.dart';
 import '../profile/profile_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class AIChatScreen extends StatefulWidget {
   static const routeName = '/ai_chat';
@@ -25,10 +22,29 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool _isLoading = false;
   List<String> _previousSearches = [];
 
+  String? _selectedModel;
+
   @override
   void initState() {
     super.initState();
     _loadPreviousSearches();
+  }
+
+  Future<void> _loadPreviousSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList('previous_searches') ?? [];
+    setState(() => _previousSearches = data);
+  }
+
+  Future<void> _saveSearch(String query) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!_previousSearches.contains(query)) {
+      _previousSearches.insert(0, query);
+      if (_previousSearches.length > 50) {
+        _previousSearches = _previousSearches.sublist(0, 50);
+      }
+      await prefs.setStringList('previous_searches', _previousSearches);
+    }
   }
 
   Future<void> _sendMessage(String text) async {
@@ -40,7 +56,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       _isLoading = true;
     });
 
-    await _storePreviousSearch(text);
+    await _saveSearch(text);
     final reply = await _gemini.sendPrompt(text);
 
     setState(() {
@@ -49,37 +65,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  Future<void> _storePreviousSearch(String search) async {
-    final prefs = await SharedPreferences.getInstance();
-    _previousSearches.remove(search);
-    _previousSearches.insert(0, search);
-    if (_previousSearches.length > 20) {
-      _previousSearches = _previousSearches.sublist(0, 20);
-    }
-    await prefs.setString('previous_searches', jsonEncode(_previousSearches));
-  }
-
-  Future<void> _loadPreviousSearches() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('previous_searches');
-    if (raw != null) {
-      setState(() {
-        _previousSearches = List<String>.from(jsonDecode(raw));
-      });
-    }
-  }
-
-  final List<String> _subjects = [
-    'Mathematics',
-    'Computer Science',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'Statistics',
-    'Engineering',
-    'Economics',
-    'History',
-    'Philosophy',
+  final List<String> _models = [
+    '4TY Math',
+    '4TY Code',
+    '4TY General',
+    '4TY FAQ',
+    '4TY Webtech',
+    '4TY HLPL2',
   ];
 
   @override
@@ -231,7 +223,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.model_training_outlined),
-                onPressed: _showSubjectPicker,
+                onPressed: _showModelPicker,
               ),
               const SizedBox(width: 48),
               IconButton(
@@ -250,7 +242,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  void _showSubjectPicker() {
+  void _showModelPicker() {
     showModalBottomSheet(
       context: context,
       builder: (_) => Padding(
@@ -259,7 +251,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
           children: [
             TextField(
               decoration: InputDecoration(
-                hintText: 'Search subjects…',
+                hintText: 'Search for models…',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -270,12 +262,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
             const SizedBox(height: 12),
             Expanded(
               child: ListView.separated(
-                itemCount: _subjects.length,
+                itemCount: _models.length,
                 separatorBuilder: (_, __) => const Divider(),
                 itemBuilder: (_, i) => ListTile(
-                  title: Text(_subjects[i]),
+                  title: Text(_models[i]),
                   onTap: () {
                     Navigator.pop(context);
+                    setState(() {
+                      _selectedModel = _models[i];
+                      _messages.clear();
+                      _messages.add('Welcome to ${_models[i]} Chatbot');
+                    });
                   },
                 ),
               ),
