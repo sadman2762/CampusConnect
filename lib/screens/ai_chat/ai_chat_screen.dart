@@ -1,8 +1,7 @@
-// lib/screens/ai_chat/ai_chat_screen.dart
-
 import 'package:flutter/material.dart';
 import '../../services/gemini_service.dart';
-import '../../utils/markdown_utils.dart'; // <-- import the Markdown stripper
+import '../../utils/markdown_utils.dart';
+import '../profile/profile_screen.dart';
 
 class AIChatScreen extends StatefulWidget {
   static const routeName = '/ai_chat';
@@ -23,16 +22,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (text.trim().isEmpty) return;
 
     setState(() {
-      _messages.add(text); // user message
+      _messages.add(text);
       _controller.clear();
-      _isLoading = true; // show loading indicator
+      _isLoading = true;
     });
 
     final reply = await _gemini.sendPrompt(text);
 
     setState(() {
       _isLoading = false;
-      _messages.add(reply); // AI reply or error message
+      _messages.add(reply);
     });
   }
 
@@ -68,26 +67,22 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(
-      context,
-    ).copyWith(disabledColor: Colors.grey.shade400);
+    final theme =
+        Theme.of(context).copyWith(disabledColor: Colors.grey.shade400);
     final textTheme = theme.textTheme;
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _buildProfileDrawer(),
       endDrawer: _buildPreviousSearchesDrawer(),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Column(
             children: [
-              // Header
               Text(
                 '4TY',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
@@ -96,14 +91,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 style: textTheme.titleMedium,
               ),
               const SizedBox(height: 24),
-
-              // Chat messages
               Expanded(
                 child: ListView.separated(
                   itemCount: _messages.length + (_isLoading ? 1 : 0),
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (ctx, i) {
-                    // Loading bubble
                     if (i == _messages.length && _isLoading) {
                       return Align(
                         alignment: Alignment.centerLeft,
@@ -126,9 +118,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     final msg = _messages[i];
                     final isUser = i.isOdd;
                     return Align(
-                      alignment: isUser
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
+                      alignment:
+                          isUser ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
                         margin: EdgeInsets.only(
                           left: isUser ? 80 : 0,
@@ -141,7 +132,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
                               : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        // stripMd removes **bold**, ### headings, and * bullets
                         child: Text(
                           stripMd(msg),
                           style: const TextStyle(fontSize: 16),
@@ -151,17 +141,12 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Input row
               Row(
                 children: [
                   IconButton(
                     icon: const Icon(Icons.camera_alt_outlined),
-                    onPressed: () {
-                      // TODO: handle camera
-                    },
+                    onPressed: () {},
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -170,9 +155,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       decoration: InputDecoration(
                         hintText: 'Send a message…',
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                            horizontal: 12, vertical: 10),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,
@@ -196,26 +179,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
           ),
         ),
       ),
-
-      // 4TY FAB
       floatingActionButton: FloatingActionButton(
         elevation: 6,
         backgroundColor: Colors.white,
-        onPressed: () {
-          // Optionally scroll to bottom
-        },
+        onPressed: () {},
         child: const Text(
           '4TY',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // Bottom Navigation
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
@@ -240,7 +217,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ProfileScreen.routeName),
               ),
             ],
           ),
@@ -249,7 +227,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  // Subject Picker Bottom Sheet
   void _showSubjectPicker() {
     showModalBottomSheet(
       context: context,
@@ -265,24 +242,19 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onChanged: (q) {
-                // TODO: filter _subjects
-              },
+              onChanged: (q) {},
             ),
             const SizedBox(height: 12),
             Expanded(
               child: ListView.separated(
                 itemCount: _subjects.length,
                 separatorBuilder: (_, __) => const Divider(),
-                itemBuilder: (_, i) {
-                  return ListTile(
-                    title: Text(_subjects[i]),
-                    onTap: () {
-                      Navigator.pop(context);
-                      // TODO: switch AI model
-                    },
-                  );
-                },
+                itemBuilder: (_, i) => ListTile(
+                  title: Text(_subjects[i]),
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                ),
               ),
             ),
           ],
@@ -291,75 +263,33 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  // Profile Drawer
-  Drawer _buildProfileDrawer() => Drawer(
-    child: Column(
-      children: [
-        DrawerHeader(
-          decoration: BoxDecoration(color: Colors.blue.shade100),
-          child: Row(
-            children: const [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: AssetImage('assets/images/profiles.jpg'),
+  Drawer _buildPreviousSearchesDrawer() => Drawer(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Previous Searches',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 16),
-              Text('John Doe\njohndoe@example.com'),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _previousSearches.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, i) => ListTile(
+                    leading: const Icon(Icons.history),
+                    title: Text(_previousSearches[i]),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _sendMessage(_previousSearches[i]);
+                    },
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        _drawerTile(Icons.person_outline, 'My Profile'),
-        _drawerTile(Icons.inbox_outlined, 'My Inbox'),
-        _drawerTile(Icons.logout, 'Logout'),
-        _drawerTile(Icons.help_outline, 'Help Center'),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Text(
-            '© 2025 4TY',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  // Previous Searches Drawer
-  Drawer _buildPreviousSearchesDrawer() => Drawer(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Previous Searches',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: _previousSearches.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (_, i) {
-                return ListTile(
-                  leading: const Icon(Icons.history),
-                  title: Text(_previousSearches[i]),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _sendMessage(_previousSearches[i]);
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  ListTile _drawerTile(IconData icon, String label) => ListTile(
-    leading: Icon(icon),
-    title: Text(label),
-    onTap: () => Navigator.pop(context),
-  );
+      );
 }
