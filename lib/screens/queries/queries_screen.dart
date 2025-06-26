@@ -1,6 +1,5 @@
-// lib/screens/queries/queries_screen.dart
-
 import 'package:flutter/material.dart';
+import '../profile/profile_screen.dart';
 import 'widgets/query_card.dart';
 
 class QueriesScreen extends StatefulWidget {
@@ -15,7 +14,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _viewMy = 0; // 0 = all queries, 1 = my queries
 
-  // All queries data
   static const _allQueries = [
     {
       'author': 'Rita',
@@ -49,14 +47,12 @@ class _QueriesScreenState extends State<QueriesScreen> {
     },
   ];
 
-  // “My” queries data
   static const _myQueries = [
     {'author': 'You', 'title': 'Understanding DBMS Normalization', 'text': '…'},
     {'author': 'You', 'title': 'Time Management Hacks', 'text': '…'},
     {'author': 'You', 'title': 'Best Study Apps?', 'text': '…'},
   ];
 
-  // Top queries rankings
   static const _topQueries = [
     {'title': 'Understanding DBMS Normalization', 'engagements': '125'},
     {'title': 'Final Year Project Topics', 'engagements': '98'},
@@ -73,26 +69,18 @@ class _QueriesScreenState extends State<QueriesScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _buildProfileDrawer(),
       endDrawer: _buildTopQueriesDrawer(),
-
-      // BODY
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 24),
-
-            // Title
             Text(
               'Queries Section',
               style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 8),
-
-            // Subtitle
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Text(
@@ -101,10 +89,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 textAlign: TextAlign.center,
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Search bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -120,10 +105,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            // Queries list
             Expanded(
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -148,8 +130,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
           ],
         ),
       ),
-
-      // 4TY FAB
       floatingActionButton: FloatingActionButton(
         elevation: 6,
         backgroundColor: Colors.white,
@@ -157,15 +137,13 @@ class _QueriesScreenState extends State<QueriesScreen> {
           '4TY',
           style: TextStyle(
             color: Colors.black87,
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
         onPressed: () => Navigator.pushNamed(context, '/ai_chat'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // BOTTOM NAV
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
@@ -174,13 +152,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Home
               IconButton(
                 icon: const Icon(Icons.home_outlined),
                 onPressed: () => Navigator.pop(context),
               ),
-
-              // My Queries view
               IconButton(
                 icon: Icon(
                   Icons.list_alt,
@@ -188,19 +163,15 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 ),
                 onPressed: () => setState(() => _viewMy = 1),
               ),
-
-              // (FAB sits here)
-
-              // Top Queries drawer
+              const SizedBox(width: 48),
               IconButton(
                 icon: const Icon(Icons.bar_chart_outlined),
                 onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
               ),
-
-              // Profile drawer
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () =>
+                    Navigator.pushNamed(context, ProfileScreen.routeName),
               ),
             ],
           ),
@@ -209,72 +180,32 @@ class _QueriesScreenState extends State<QueriesScreen> {
     );
   }
 
-  // PROFILE drawer
-  Drawer _buildProfileDrawer() => Drawer(
-    child: Column(
-      children: [
-        DrawerHeader(
-          decoration: BoxDecoration(color: Colors.blue.shade100),
-          child: Row(
-            children: const [
-              CircleAvatar(
-                radius: 32,
-                backgroundImage: AssetImage('assets/images/profiles.jpg'),
+  Drawer _buildTopQueriesDrawer() => Drawer(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Top Queries',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 16),
-              Text('John Doe\njohndoe@example.com'),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _topQueries.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (_, i) {
+                    final t = _topQueries[i];
+                    return ListTile(
+                      title: Text(t['title']!),
+                      trailing: Text('${t['engagements']} 👍'),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
-        _drawerTile(Icons.person_outline, 'My Profile'),
-        _drawerTile(Icons.inbox_outlined, 'My Inbox'),
-        _drawerTile(Icons.logout, 'Logout'),
-        _drawerTile(Icons.help_outline, 'Help Center'),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 24),
-          child: Text(
-            '© 2025 4TY',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  // TOP QUERIES drawer
-  Drawer _buildTopQueriesDrawer() => Drawer(
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Queries',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.separated(
-              itemCount: _topQueries.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (_, i) {
-                final t = _topQueries[i];
-                return ListTile(
-                  title: Text(t['title']!),
-                  trailing: Text('${t['engagements']} 👍'),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  ListTile _drawerTile(IconData icon, String label) => ListTile(
-    leading: Icon(icon),
-    title: Text(label),
-    onTap: () => Navigator.pop(context),
-  );
+      );
 }
