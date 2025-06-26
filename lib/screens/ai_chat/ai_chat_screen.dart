@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../../services/gemini_service.dart';
 import '../../utils/markdown_utils.dart';
 import '../profile/profile_screen.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class AIChatScreen extends StatefulWidget {
   static const routeName = '/ai_chat';
@@ -17,46 +19,68 @@ class AIChatScreen extends StatefulWidget {
 
 class _AIChatScreenState extends State<AIChatScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  final List<Map<String, dynamic>> _messages = [
-    {'text': 'Hello! How can I assist you today?', 'isUser': false},
-  ];
+  final List<String> _messages = ['Hello! How can I assist you today?'];
   final TextEditingController _controller = TextEditingController();
   final GeminiService _gemini = GeminiService();
   bool _isLoading = false;
+  List<String> _previousSearches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreviousSearches();
+  }
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
     setState(() {
-      _messages.add({'text': text, 'isUser': true});
+      _messages.add(text);
       _controller.clear();
       _isLoading = true;
     });
 
+    await _storePreviousSearch(text);
     final reply = await _gemini.sendPrompt(text);
 
     setState(() {
       _isLoading = false;
-      _messages.add({'text': reply, 'isUser': false});
+      _messages.add(reply);
     });
   }
 
-  Future<void> _uploadAndShowImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null && result.files.single.bytes != null) {
-      final Uint8List imageBytes = result.files.single.bytes!;
-      final String fileName = const Uuid().v4();
+  Future<void> _storePreviousSearch(String search) async {
+    final prefs = await SharedPreferences.getInstance();
+    _previousSearches.remove(search);
+    _previousSearches.insert(0, search);
+    if (_previousSearches.length > 20) {
+      _previousSearches = _previousSearches.sublist(0, 20);
+    }
+    await prefs.setString('previous_searches', jsonEncode(_previousSearches));
+  }
 
-      final ref =
-          FirebaseStorage.instance.ref().child('ai_chat_images/$fileName.jpg');
-      await ref.putData(imageBytes);
-      final url = await ref.getDownloadURL();
-
+  Future<void> _loadPreviousSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('previous_searches');
+    if (raw != null) {
       setState(() {
-        _messages.add({'text': url, 'isUser': true, 'isImage': true});
+        _previousSearches = List<String>.from(jsonDecode(raw));
       });
     }
   }
+
+  final List<String> _subjects = [
+    'Mathematics',
+    'Computer Science',
+    'Physics',
+    'Chemistry',
+    'Biology',
+    'Statistics',
+    'Engineering',
+    'Economics',
+    'History',
+    'Philosophy',
+  ];
 
   @override
   void dispose() {
@@ -78,9 +102,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Column(
             children: [
-              Text('4TY',
-                  style: textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
+              Text(
+                '4TY',
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               Text(
                 'Personalised AI assistant for Unideb student',
@@ -94,14 +120,26 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (ctx, i) {
                     if (i == _messages.length && _isLoading) {
-                      return _buildLoadingMessage();
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 80),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
                     }
 
                     final msg = _messages[i];
-                    final isUser = msg['isUser'] == true;
-                    final isImage = msg['isImage'] == true;
-                    final content = msg['text'];
-
+                    final isUser = i.isOdd;
                     return Align(
                       alignment:
                           isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -117,10 +155,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
                               : Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: isImage
-                            ? Image.network(content, width: 150)
-                            : Text(stripMd(content),
-                                style: const TextStyle(fontSize: 16)),
+                        child: Text(
+                          stripMd(msg),
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                     );
                   },
@@ -131,7 +169,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.camera_alt_outlined),
-                    onPressed: _uploadAndShowImage,
+                    onPressed: () {},
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -212,23 +250,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  Widget _buildLoadingMessage() => Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(right: 80),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
-
   void _showSubjectPicker() {
     showModalBottomSheet(
       context: context,
@@ -265,19 +286,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
   }
 
-  final List<String> _subjects = [
-    'Mathematics',
-    'Computer Science',
-    'Physics',
-    'Chemistry',
-    'Biology',
-    'Statistics',
-    'Engineering',
-    'Economics',
-    'History',
-    'Philosophy',
-  ];
-
   Drawer _buildPreviousSearchesDrawer() => Drawer(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -307,15 +315,4 @@ class _AIChatScreenState extends State<AIChatScreen> {
           ),
         ),
       );
-
-  final List<String> _previousSearches = [
-    'DBMS Normalization',
-    'Project Ideas',
-    'Time Management',
-    'Unity 3D tips',
-    'CSS Grid vs Flexbox',
-    'Python data classes',
-    'React State Hooks',
-    'SQL Indexing',
-  ];
 }
