@@ -9,7 +9,8 @@ import '../queries/queries_screen.dart';
 import '../guidance/guidance_screen.dart';
 import '../ai_chat/ai_chat_screen.dart';
 import '../profile/profile_screen.dart';
-import '../settings/settings_screen.dart'; // ✅ Added Settings screen import
+import '../settings/settings_screen.dart';
+import '../help/help_center_screen.dart';
 
 // Widgets
 import 'widgets/feature_card.dart';
@@ -250,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }),
           _drawerRowItem(Icons.help_outline, '4TY Help Center', () {
-            // Add help screen later
+            Navigator.pushNamed(context, HelpCenterScreen.routeName);
           }),
 
           const Spacer(),

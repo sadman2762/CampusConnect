@@ -16,7 +16,8 @@ import 'screens/queries/queries_screen.dart';
 import 'screens/guidance/guidance_screen.dart';
 import 'screens/ai_chat/ai_chat_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'screens/settings/settings_screen.dart'; // ✅ Added
+import 'screens/settings/settings_screen.dart';
+import 'screens/help/help_center_screen.dart';
 
 // Theme
 import 'theme/theme.dart';
@@ -69,7 +70,8 @@ class CampusConnectApp extends StatelessWidget {
         GuidanceScreen.routeName: (_) => const GuidanceScreen(),
         AIChatScreen.routeName: (_) => const AIChatScreen(),
         ProfileScreen.routeName: (_) => const ProfileScreen(),
-        SettingsScreen.routeName: (_) => const SettingsScreen(), // ✅ Added
+        SettingsScreen.routeName: (_) => const SettingsScreen(),
+        HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
       },
 
       // Global error handler
