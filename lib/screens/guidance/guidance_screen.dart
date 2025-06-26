@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
+import 'guidance_chat_screen.dart';
 
 class GuidanceScreen extends StatefulWidget {
   static const routeName = '/guidance';
@@ -147,9 +148,8 @@ class _GuidanceScreenState extends State<GuidanceScreen>
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
               child: Text(
                 'One-to-One Guidance',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             Padding(
@@ -212,7 +212,17 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                           p['time']!,
                           style: const TextStyle(fontSize: 12),
                         ),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => GuidanceChatScreen(
+                                peerId: 'peer_$i', // Replace with real UID
+                                peerName: p['name']!,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
