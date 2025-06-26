@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import '../../widgets/custom_bottom_nav.dart';
+import '../home/home_screen.dart';
+import '../profile/profile_screen.dart';
 import 'widgets/course_card.dart';
 import 'widgets/update_item.dart';
 
@@ -20,7 +22,6 @@ class _CoursesScreenState extends State<CoursesScreen>
   late final TabController _tabController;
   late final ScrollController _scrollController;
 
-  // 8 courses now
   final List<Map<String, String>> _courses = [
     {
       'title': 'Introduction to Programming',
@@ -38,7 +39,6 @@ class _CoursesScreenState extends State<CoursesScreen>
     {'title': 'Software Engineering', 'image': 'assets/images/discussions.jpg'},
   ];
 
-  // 7 notifications
   final List<String> _updates = [
     'Dates of HLP-L0 exams announced next month.',
     'HLP-L1 syllabus updated—check new topics.',
@@ -47,6 +47,15 @@ class _CoursesScreenState extends State<CoursesScreen>
     'Lab sessions canceled this Friday.',
     'Guest lecture scheduled on Monday.',
     'Course feedback form is now open.',
+  ];
+
+  final List<Map<String, dynamic>> _topCourses = [
+    {'title': 'Data Structures', 'rating': 9.5},
+    {'title': 'Algorithms', 'rating': 9.2},
+    {'title': 'Software Engineering', 'rating': 9.0},
+    {'title': 'Applied Statistics', 'rating': 8.7},
+    {'title': 'Web Technologies', 'rating': 8.4},
+    {'title': 'Intro to CS', 'rating': 8.0},
   ];
 
   @override
@@ -63,8 +72,6 @@ class _CoursesScreenState extends State<CoursesScreen>
     super.dispose();
   }
 
-  void _openDrawer() => _scaffoldKey.currentState?.openDrawer();
-  void _openRanking() => _scaffoldKey.currentState?.openEndDrawer();
   void _goToNotifications() => _tabController.animateTo(1);
 
   void _scrollToSearch() {
@@ -78,6 +85,8 @@ class _CoursesScreenState extends State<CoursesScreen>
     }
   }
 
+  void _openRanking() => _scaffoldKey.currentState?.openEndDrawer();
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -86,101 +95,6 @@ class _CoursesScreenState extends State<CoursesScreen>
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-
-      // Left drawer (profile)
-      drawer: Drawer(
-        child: Column(
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue.shade100),
-              child: Row(
-                children: const [
-                  CircleAvatar(
-                    radius: 32,
-                    backgroundImage: AssetImage('assets/images/profiles.jpg'),
-                  ),
-                  SizedBox(width: 16),
-                  Text('John Doe\njohndoe@example.com'),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('My Profile'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.inbox_outlined),
-              title: const Text('My Inbox'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.help_outline),
-              title: const Text('Help Center'),
-              onTap: () => Navigator.pop(context),
-            ),
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 24.0),
-              child: Text(
-                '© 2025 4TY',
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      // Right drawer (ranking)
-      endDrawer: Drawer(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Subject Rankings',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView(
-                  children: const [
-                    ListTile(
-                      title: Text('Data Structures'),
-                      trailing: Text('9.5'),
-                    ),
-                    ListTile(title: Text('Algorithms'), trailing: Text('9.2')),
-                    ListTile(
-                      title: Text('Software Engineering'),
-                      trailing: Text('9.0'),
-                    ),
-                    ListTile(
-                      title: Text('Applied Statistics'),
-                      trailing: Text('8.7'),
-                    ),
-                    ListTile(
-                      title: Text('Web Technologies'),
-                      trailing: Text('8.4'),
-                    ),
-                    ListTile(title: Text('Intro to CS'), trailing: Text('8.0')),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-
-      // Shared FAB + footer
       floatingActionButton: CustomBottomNav.fab(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
@@ -193,7 +107,8 @@ class _CoursesScreenState extends State<CoursesScreen>
             children: [
               IconButton(
                 icon: const Icon(Icons.home_outlined),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pushReplacementNamed(
+                    context, HomeScreen.routeName),
               ),
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
@@ -206,14 +121,43 @@ class _CoursesScreenState extends State<CoursesScreen>
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: _openDrawer,
+                onPressed: () => Navigator.pushReplacementNamed(
+                    context, ProfileScreen.routeName),
               ),
             ],
           ),
         ),
       ),
-
-      // Main content
+      endDrawer: Drawer(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Top Ranked Courses',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _topCourses.length,
+                  itemBuilder: (ctx, i) {
+                    final c = _topCourses[i];
+                    return ListTile(
+                      title: Text(c['title']),
+                      trailing: Text('${c['rating']}/10'),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -232,8 +176,7 @@ class _CoursesScreenState extends State<CoursesScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Explore a variety of courses with detailed information on topics, '
-                  'exam patterns, and more to enhance your academic journey.',
+                  'Explore a variety of courses with detailed information on topics, exam patterns, and more to enhance your academic journey.',
                   style: textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 16),
@@ -256,7 +199,6 @@ class _CoursesScreenState extends State<CoursesScreen>
                 ),
                 const SizedBox(height: 16),
 
-                // Horizontal courses
                 SizedBox(
                   height: 140,
                   child: ListView.separated(
@@ -274,7 +216,6 @@ class _CoursesScreenState extends State<CoursesScreen>
                 ),
                 const SizedBox(height: 24),
 
-                // Tabs
                 TabBar(
                   controller: _tabController,
                   labelColor: Colors.black,
@@ -290,21 +231,17 @@ class _CoursesScreenState extends State<CoursesScreen>
                 ),
                 const SizedBox(height: 8),
 
-                // Tab views
                 SizedBox(
                   height: height * 0.5,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      // Updates tab
                       ListView.separated(
                         padding: const EdgeInsets.only(top: 16),
                         itemCount: _updates.length,
                         separatorBuilder: (_, __) => const Divider(),
                         itemBuilder: (ctx, i) => UpdateItem(text: _updates[i]),
                       ),
-
-                      // Notifications tab
                       ListView.separated(
                         padding: const EdgeInsets.only(top: 16),
                         itemCount: _updates.length,
