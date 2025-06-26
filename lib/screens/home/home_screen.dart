@@ -8,7 +8,8 @@ import '../discussions/group_discussions_screen.dart';
 import '../queries/queries_screen.dart';
 import '../guidance/guidance_screen.dart';
 import '../ai_chat/ai_chat_screen.dart';
-import '../profile/profile_screen.dart'; // ✅ Profile screen import
+import '../profile/profile_screen.dart';
+import '../settings/settings_screen.dart'; // ✅ Added Settings screen import
 
 // Widgets
 import 'widgets/feature_card.dart';
@@ -214,17 +215,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // SECTION 1
           _drawerRowItem(Icons.person_outline, 'My Profile', () {
-            Navigator.pushNamed(
-                context, ProfileScreen.routeName); // ✅ Navigation
+            Navigator.pushNamed(context, ProfileScreen.routeName);
           }),
           const Divider(),
 
-          // SECTION 2
-          _drawerRowItem(Icons.inbox_outlined, 'My Inbox', () {}),
-          _drawerRowItem(Icons.group_outlined, 'My Group', () {}),
-          _drawerRowItem(Icons.menu_book_outlined, 'My Courses', () {}),
-          _drawerRowItem(Icons.question_answer_outlined, 'My Queries', () {}),
-          _drawerRowItem(Icons.settings_outlined, 'Settings', () {}),
+          // SECTION 2 — Custom Navigation
+          _drawerRowItem(Icons.chat_bubble_outline, 'My Inbox', () {
+            Navigator.pushNamed(context, GuidanceScreen.routeName);
+          }),
+          _drawerRowItem(Icons.group_outlined, 'My Group', () {
+            Navigator.pushNamed(context, GroupDiscussionsScreen.routeName);
+          }),
+          _drawerRowItem(Icons.menu_book_outlined, 'My Courses', () {
+            Navigator.pushNamed(context, CoursesScreen.routeName);
+          }),
+          _drawerRowItem(Icons.question_answer_outlined, 'My Queries', () {
+            Navigator.pushNamed(context, QueriesScreen.routeName);
+          }),
+          _drawerRowItem(Icons.settings_outlined, 'Settings', () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            );
+          }),
           const Divider(),
 
           // SECTION 3
@@ -236,7 +249,9 @@ class _HomeScreenState extends State<HomeScreen> {
               (route) => false,
             );
           }),
-          _drawerRowItem(Icons.help_outline, '4TY Help Center', () {}),
+          _drawerRowItem(Icons.help_outline, '4TY Help Center', () {
+            // Add help screen later
+          }),
 
           const Spacer(),
           Padding(

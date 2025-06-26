@@ -16,9 +16,10 @@ import 'screens/queries/queries_screen.dart';
 import 'screens/guidance/guidance_screen.dart';
 import 'screens/ai_chat/ai_chat_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/settings/settings_screen.dart'; // ✅ Added
 
 // Theme
-import 'theme/theme.dart'; // ✅ Import your theme file
+import 'theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,7 +39,7 @@ class CampusConnectApp extends StatelessWidget {
     return MaterialApp(
       title: 'Campus Connect',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme, // ✅ Apply custom pinkish theme
+      theme: AppTheme.lightTheme,
 
       // Initial screen based on Firebase Auth state
       home: StreamBuilder<User?>(
@@ -68,6 +69,7 @@ class CampusConnectApp extends StatelessWidget {
         GuidanceScreen.routeName: (_) => const GuidanceScreen(),
         AIChatScreen.routeName: (_) => const AIChatScreen(),
         ProfileScreen.routeName: (_) => const ProfileScreen(),
+        SettingsScreen.routeName: (_) => const SettingsScreen(), // ✅ Added
       },
 
       // Global error handler
