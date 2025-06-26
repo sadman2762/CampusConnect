@@ -24,11 +24,9 @@ import 'theme/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
   runApp(const CampusConnectApp());
 }
 
@@ -38,11 +36,11 @@ class CampusConnectApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Campus Connect',
+      title: 'CampusConnect',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
 
-      // Initial screen based on Firebase Auth state
+      // Show login or home screen based on auth state
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -51,42 +49,39 @@ class CampusConnectApp extends StatelessWidget {
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          if (snapshot.hasData) {
-            return const HomeScreen();
-          }
-          return const LoginScreen();
+          return snapshot.hasData ? const HomeScreen() : const LoginScreen();
         },
       ),
 
-      // Named routes for navigation
+      // Named routes
       routes: {
-        LoginScreen.routeName: (_) => const LoginScreen(),
-        RegisterScreen.routeName: (_) => const RegisterScreen(),
-        HomeScreen.routeName: (_) => const HomeScreen(),
-        CoursesScreen.routeName: (_) => const CoursesScreen(),
-        StudentFeedScreen.routeName: (_) => StudentFeedScreen(),
-        GroupDiscussionsScreen.routeName: (_) => GroupDiscussionsScreen(),
-        QueriesScreen.routeName: (_) => const QueriesScreen(),
-        GuidanceScreen.routeName: (_) => const GuidanceScreen(),
-        AIChatScreen.routeName: (_) => const AIChatScreen(),
-        ProfileScreen.routeName: (_) => const ProfileScreen(),
-        SettingsScreen.routeName: (_) => const SettingsScreen(),
-        HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
+        LoginScreen.routeName: (context) => const LoginScreen(),
+        RegisterScreen.routeName: (context) => const RegisterScreen(),
+        HomeScreen.routeName: (context) => const HomeScreen(),
+        CoursesScreen.routeName: (context) => const CoursesScreen(),
+        StudentFeedScreen.routeName: (context) => StudentFeedScreen(),
+        GroupDiscussionsScreen.routeName: (context) => GroupDiscussionsScreen(),
+        QueriesScreen.routeName: (context) => const QueriesScreen(),
+        GuidanceScreen.routeName: (context) => const GuidanceScreen(),
+        AIChatScreen.routeName: (context) => const AIChatScreen(),
+        ProfileScreen.routeName: (context) => const ProfileScreen(),
+        SettingsScreen.routeName: (context) => const SettingsScreen(),
+        HelpCenterScreen.routeName: (context) => const HelpCenterScreen(),
       },
 
-      // Global error handler
+      // Error fallback
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails details) {
           return Scaffold(
             body: Center(
               child: Text(
-                'Something went wrong!\n${details.exception}',
+                'Something went wrong!\n${details.exceptionAsString()}',
                 textAlign: TextAlign.center,
               ),
             ),
           );
         };
-        return child!;
+        return child ?? const SizedBox.shrink();
       },
     );
   }
