@@ -2,18 +2,18 @@
 
 import 'package:flutter/material.dart';
 import '../../widgets/custom_bottom_nav.dart';
+import '../home/home_screen.dart';
+import '../profile/profile_screen.dart'; // ✅ Added
 import 'widgets/avatar_list.dart';
 import 'widgets/feed_card.dart';
 
 class StudentFeedScreen extends StatelessWidget {
   static const routeName = '/student_feed';
 
-  // Scaffold key to open drawers
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   StudentFeedScreen({Key? key}) : super(key: key);
 
-  // Dummy avatars strip
   static const List<Map<String, String>> _students = [
     {'name': 'Piroska Peter', 'avatar': 'assets/images/student1.jpg'},
     {'name': 'Anna Janos', 'avatar': 'assets/images/student2.jpg'},
@@ -24,7 +24,6 @@ class StudentFeedScreen extends StatelessWidget {
     {'name': 'Emma Brown', 'avatar': 'assets/images/student7.jpg'},
   ];
 
-  // Dummy feed posts
   static const List<Map<String, String>> _feed = [
     {
       'name': 'Piroska Peter',
@@ -77,8 +76,6 @@ class StudentFeedScreen extends StatelessWidget {
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-
-      // Left drawer (profile/inbox/logout/help)
       drawer: Drawer(
         child: Column(
           children: [
@@ -98,7 +95,11 @@ class StudentFeedScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.person_outline),
               title: const Text('My Profile'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(
+                    context, ProfileScreen.routeName);
+              },
             ),
             ListTile(
               leading: const Icon(Icons.inbox_outlined),
@@ -126,8 +127,6 @@ class StudentFeedScreen extends StatelessWidget {
           ],
         ),
       ),
-
-      // Right drawer (rankings)
       endDrawer: Drawer(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 24),
@@ -146,9 +145,7 @@ class StudentFeedScreen extends StatelessWidget {
                 child: ListView(
                   children: const [
                     ListTile(
-                      title: Text('Piroska Peter'),
-                      trailing: Text('9.8'),
-                    ),
+                        title: Text('Piroska Peter'), trailing: Text('9.8')),
                     ListTile(title: Text('Anna Janos'), trailing: Text('9.5')),
                     ListTile(title: Text('Liu Wei'), trailing: Text('9.2')),
                     ListTile(title: Text('Sara Müller'), trailing: Text('8.9')),
@@ -158,9 +155,7 @@ class StudentFeedScreen extends StatelessWidget {
                     ListTile(title: Text('John Doe'), trailing: Text('8.0')),
                     ListTile(title: Text('Jane Lee'), trailing: Text('7.8')),
                     ListTile(
-                      title: Text('Max Mustermann'),
-                      trailing: Text('7.5'),
-                    ),
+                        title: Text('Max Mustermann'), trailing: Text('7.5')),
                   ],
                 ),
               ),
@@ -168,8 +163,6 @@ class StudentFeedScreen extends StatelessWidget {
           ),
         ),
       ),
-
-      // Floating 4TY and bottom nav
       floatingActionButton: CustomBottomNav.fab(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
@@ -182,7 +175,9 @@ class StudentFeedScreen extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.home_outlined),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.map_outlined),
@@ -195,14 +190,15 @@ class StudentFeedScreen extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                onPressed: () {
+                  Navigator.pushReplacementNamed(
+                      context, ProfileScreen.routeName);
+                },
               ),
             ],
           ),
         ),
       ),
-
-      // Body
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -258,7 +254,6 @@ class StudentFeedScreen extends StatelessWidget {
     );
   }
 
-  /// Nearby friends bottom sheet
   void _showNearbyFriends(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -267,7 +262,6 @@ class StudentFeedScreen extends StatelessWidget {
           height: MediaQuery.of(context).size.height * 0.5,
           child: Row(
             children: [
-              // Left: friends list + button
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -278,45 +272,40 @@ class StudentFeedScreen extends StatelessWidget {
                           children: const [
                             ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  'assets/images/student2.jpg',
-                                ),
+                                backgroundImage:
+                                    AssetImage('assets/images/student2.jpg'),
                               ),
                               title: Text('Piroska Peter'),
                               subtitle: Text('200 m away'),
                             ),
                             ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  'assets/images/student3.jpg',
-                                ),
+                                backgroundImage:
+                                    AssetImage('assets/images/student3.jpg'),
                               ),
                               title: Text('Anna Janos'),
                               subtitle: Text('350 m away'),
                             ),
                             ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  'assets/images/student4.jpg',
-                                ),
+                                backgroundImage:
+                                    AssetImage('assets/images/student4.jpg'),
                               ),
                               title: Text('Liu Wei'),
                               subtitle: Text('480 m away'),
                             ),
                             ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  'assets/images/student5.jpg',
-                                ),
+                                backgroundImage:
+                                    AssetImage('assets/images/student5.jpg'),
                               ),
                               title: Text('Sara Müller'),
                               subtitle: Text('520 m away'),
                             ),
                             ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: AssetImage(
-                                  'assets/images/student6.jpg',
-                                ),
+                                backgroundImage:
+                                    AssetImage('assets/images/student6.jpg'),
                               ),
                               title: Text('Omar Ali'),
                               subtitle: Text('610 m away'),
@@ -326,17 +315,13 @@ class StudentFeedScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton(
-                        onPressed: () {
-                          // TODO: physical meet request
-                        },
+                        onPressed: () {},
                         child: const Text('Physical Meet Request'),
                       ),
                     ],
                   ),
                 ),
               ),
-
-              // Right: concentric circles + user + small orbits
               Expanded(
                 child: Center(
                   child: SizedBox(
@@ -345,7 +330,6 @@ class StudentFeedScreen extends StatelessWidget {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
-                        // 5 concentric rings
                         for (var i = 5; i >= 1; i--)
                           Container(
                             width: i * 60.0,
@@ -355,24 +339,18 @@ class StudentFeedScreen extends StatelessWidget {
                               color: Colors.blue.shade50.withOpacity(i * 0.1),
                             ),
                           ),
-
-                        // user avatar center
                         const CircleAvatar(
                           radius: 30,
-                          backgroundImage: AssetImage(
-                            'assets/images/student1.jpg',
-                          ),
+                          backgroundImage:
+                              AssetImage('assets/images/student1.jpg'),
                         ),
-
-                        // three small friend avatars in orbit
                         const Positioned(
                           top: 40,
                           right: 80,
                           child: CircleAvatar(
                             radius: 16,
-                            backgroundImage: AssetImage(
-                              'assets/images/student2.jpg',
-                            ),
+                            backgroundImage:
+                                AssetImage('assets/images/student2.jpg'),
                           ),
                         ),
                         const Positioned(
@@ -380,9 +358,8 @@ class StudentFeedScreen extends StatelessWidget {
                           left: 90,
                           child: CircleAvatar(
                             radius: 16,
-                            backgroundImage: AssetImage(
-                              'assets/images/student3.jpg',
-                            ),
+                            backgroundImage:
+                                AssetImage('assets/images/student3.jpg'),
                           ),
                         ),
                         const Positioned(
@@ -390,9 +367,8 @@ class StudentFeedScreen extends StatelessWidget {
                           left: 40,
                           child: CircleAvatar(
                             radius: 16,
-                            backgroundImage: AssetImage(
-                              'assets/images/student4.jpg',
-                            ),
+                            backgroundImage:
+                                AssetImage('assets/images/student4.jpg'),
                           ),
                         ),
                       ],
