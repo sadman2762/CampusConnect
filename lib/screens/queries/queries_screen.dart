@@ -46,7 +46,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
         : col.snapshots();
   }
 
-  /// Post new query (stores in both title & text so QueryCard shows it)
+  /// Post new query (now includes initial likes = 0)
   Future<void> _postNewQuery() async {
     final text = _newQueryController.text.trim();
     if (text.isEmpty || _me == null) return;
@@ -55,6 +55,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
       'title': text,
       'text': text,
       'uid': _myUid,
+      'likes': 0,
       'timestamp': FieldValue.serverTimestamp(),
     });
     _newQueryController.clear();
@@ -79,7 +80,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
             ),
             const SizedBox(height: 8),
 
-            // — Post-a-query input bar
+            // Post-a-query input bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -102,7 +103,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
             ),
 
             const SizedBox(height: 16),
-            // — Toggle All vs. My
+            // Toggle All vs. My
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -121,7 +122,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
             ),
             const SizedBox(height: 16),
 
-            // — Live list
+            // Live list
             Expanded(
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _queryStream,
@@ -138,13 +139,13 @@ class _QueriesScreenState extends State<QueriesScreen> {
                     itemCount: docs.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 16),
                     itemBuilder: (_, i) {
-                      final data = docs[i].data();
+                      final doc = docs[i];
+                      final data = doc.data();
                       return QueryCard(
+                        queryId: doc.id,
                         author: data['author'] as String,
                         title: data['title'] as String,
                         text: data['text'] as String,
-                        onAnswer: () {/* TODO */},
-                        onOthers: () {/* TODO */},
                       );
                     },
                   );
@@ -216,25 +217,30 @@ class _QueriesScreenState extends State<QueriesScreen> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: FutureBuilder<QuerySnapshot>(
-                  future: FirebaseFirestore.instance
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
                       .collection('queries')
-                      .orderBy('timestamp', descending: true)
+                      .orderBy('likes', descending: true)
                       .limit(10)
-                      .get(),
+                      .snapshots(),
                   builder: (ctx, snap) {
-                    if (!snap.hasData) {
+                    if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    final top = snap.data!.docs;
+                    final topDocs = snap.data?.docs ?? [];
+                    if (topDocs.isEmpty) {
+                      return const Center(child: Text('No queries yet.'));
+                    }
                     return ListView.separated(
-                      itemCount: top.length,
+                      itemCount: topDocs.length,
                       separatorBuilder: (_, __) => const Divider(),
                       itemBuilder: (_, i) {
-                        final d = top[i].data() as Map<String, dynamic>;
+                        final data = topDocs[i].data();
+                        final likes = data['likes'] as int? ?? 0;
                         return ListTile(
-                          title: Text(d['title'] as String),
-                          trailing: const Icon(Icons.thumb_up_outlined),
+                          leading: Text('${i + 1}.'),
+                          title: Text(data['title'] as String),
+                          trailing: Text('$likes 👍'),
                         );
                       },
                     );
