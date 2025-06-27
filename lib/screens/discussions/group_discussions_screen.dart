@@ -1,7 +1,8 @@
 // lib/screens/discussions/group_discussions_screen.dart
 
 import 'package:flutter/material.dart';
-import '../profile/profile_screen.dart'; // Added for navigation
+import '../profile/profile_screen.dart';
+import 'summary_screen.dart'; // Updated
 
 class GroupDiscussionsScreen extends StatelessWidget {
   static const routeName = '/discussions';
@@ -113,7 +114,18 @@ class GroupDiscussionsScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    final prompt = _messages
+                        .map((m) => '${m['author']}: ${m['text']}')
+                        .join('\n');
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SummaryScreen(prompt: prompt),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple.shade50,
                     foregroundColor: Colors.purple,
