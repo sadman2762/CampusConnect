@@ -1,19 +1,57 @@
 import 'package:flutter/material.dart';
-import '../../profile/student_profile_screen.dart'; // Adjust path as needed
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../profile/student_profile_screen.dart'; // Adjust path if needed
 
-class FeedCard extends StatelessWidget {
+class FeedCard extends StatefulWidget {
+  final String postId;
+  final String studentId;
   final String name;
   final String avatarPath;
   final String content;
-  final String studentId;
 
   const FeedCard({
     Key? key,
+    required this.postId,
+    required this.studentId,
     required this.name,
     required this.avatarPath,
     required this.content,
-    required this.studentId,
   }) : super(key: key);
+
+  @override
+  State<FeedCard> createState() => _FeedCardState();
+}
+
+class _FeedCardState extends State<FeedCard> {
+  bool _showComments = false;
+  final _commentController = TextEditingController();
+
+  CollectionReference<Map<String, dynamic>> get _commentsCol =>
+      FirebaseFirestore.instance
+          .collection('feed')
+          .doc(widget.postId)
+          .collection('comments');
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> get _commentsStream =>
+      _commentsCol.orderBy('timestamp').snapshots();
+
+  Future<void> _postComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+    await _commentsCol.add({
+      'author': 'You', // replace with real user when available
+      'avatar': widget.avatarPath,
+      'text': text,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    _commentController.clear();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,17 +69,19 @@ class FeedCard extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => StudentProfileScreen(studentId: studentId),
+                    builder: (_) => StudentProfileScreen(
+                      studentId: widget.studentId,
+                    ),
                   ),
                 );
               },
               child: Row(
                 children: [
-                  CircleAvatar(backgroundImage: AssetImage(avatarPath)),
+                  CircleAvatar(backgroundImage: AssetImage(widget.avatarPath)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      name,
+                      widget.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -56,15 +96,88 @@ class FeedCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Text(content, style: const TextStyle(fontSize: 14)),
+            Text(widget.content, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 12),
-            Row(
-              children: const [
-                Icon(Icons.chat_bubble_outline, size: 20),
-                SizedBox(width: 4),
-                Text('Engagements'),
-              ],
+
+            // Comments toggle button with count
+            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _commentsStream,
+              builder: (ctx, snap) {
+                final count = snap.data?.docs.length ?? 0;
+                return TextButton.icon(
+                  onPressed: () =>
+                      setState(() => _showComments = !_showComments),
+                  icon: const Icon(Icons.comment_outlined, size: 20),
+                  label: Text('Comments ($count)'),
+                );
+              },
             ),
+
+            // Expandable comment section
+            if (_showComments) ...[
+              const Divider(),
+              SizedBox(
+                height: 140,
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _commentsStream,
+                  builder: (ctx, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final docs = snap.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return const Center(child: Text('No comments yet.'));
+                    }
+                    return ListView.separated(
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) {
+                        final c = docs[i].data();
+                        return Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 12,
+                              backgroundImage:
+                                  AssetImage(c['avatar'] as String),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '${c['author']}: ${c['text']}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: const InputDecoration(
+                          hintText: 'Write a comment…',
+                          isDense: true,
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _postComment,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
