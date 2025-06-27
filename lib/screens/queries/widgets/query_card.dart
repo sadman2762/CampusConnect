@@ -33,7 +33,10 @@ class QueryCard extends StatelessWidget {
         children: [
           Text(
             '$author posted a query',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
           ),
           const SizedBox(height: 8),
           Container(
@@ -53,7 +56,10 @@ class QueryCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(text, style: const TextStyle(fontSize: 14)),
+                Text(
+                  text,
+                  style: const TextStyle(fontSize: 14),
+                ),
               ],
             ),
           ),

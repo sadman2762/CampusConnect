@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../courses/courses_screen.dart';
+import '../student_feed/student_feed_screen.dart';
+import '../discussions/group_discussions_screen.dart';
+import '../guidance/guidance_screen.dart';
+import '../ai_chat/ai_chat_screen.dart';
 import '../profile/profile_screen.dart';
+import '../settings/settings_screen.dart';
+import '../help/help_center_screen.dart';
+
 import 'widgets/query_card.dart';
 
 class QueriesScreen extends StatefulWidget {
@@ -12,55 +23,12 @@ class QueriesScreen extends StatefulWidget {
 
 class _QueriesScreenState extends State<QueriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  int _viewMy = 0; // 0 = all queries, 1 = my queries
   final _newQueryController = TextEditingController();
+  int _viewMy = 0; // 0 = all queries, 1 = my queries
 
-  static const _allQueries = [
-    {
-      'author': 'Rita',
-      'title': 'Understanding DBMS Normalization',
-      'text':
-          'Can someone explain normalization in simple terms? I’m confused about how to identify functional dependencies and apply normalization steps?',
-    },
-    {
-      'author': 'Mark',
-      'title': 'Final Year Project Topics',
-      'text':
-          'I’m looking for innovative project ideas for my final year. Should I go for AI-based projects, web applications, or something else? Any suggestions?',
-    },
-    {
-      'author': 'Alex Chen',
-      'title': 'Tips for Effective Note-Taking',
-      'text':
-          'What are your best strategies for taking lecture notes that actually help with revision later?',
-    },
-    {
-      'author': 'John Doe',
-      'title': 'Time Management Hacks',
-      'text':
-          'How do you balance assignments, part-time work, and social life without burning out?',
-    },
-    {
-      'author': 'Maya Patel',
-      'title': 'Best Study Apps?',
-      'text':
-          'Can anyone recommend mobile apps that help track study time and improve focus?',
-    },
-  ];
-
-  static const _myQueries = [
-    {'author': 'You', 'title': 'Understanding DBMS Normalization', 'text': '…'},
-    {'author': 'You', 'title': 'Time Management Hacks', 'text': '…'},
-    {'author': 'You', 'title': 'Best Study Apps?', 'text': '…'},
-  ];
-
-  static const _topQueries = [
-    {'title': 'Understanding DBMS Normalization', 'engagements': '125'},
-    {'title': 'Final Year Project Topics', 'engagements': '98'},
-    {'title': 'Tips for Effective Note-Taking', 'engagements': '76'},
-    {'title': 'Time Management Hacks', 'engagements': '54'},
-    {'title': 'Best Study Apps?', 'engagements': '32'},
-  ];
+  User? get _me => FirebaseAuth.instance.currentUser;
+  String get _myUid => _me?.uid ?? '';
+  String get _myName => _me?.email?.split('@').first ?? 'Anonymous';
 
   @override
   void dispose() {
@@ -68,11 +36,34 @@ class _QueriesScreenState extends State<QueriesScreen> {
     super.dispose();
   }
 
+  /// Stream of either all queries or just mine
+  Stream<QuerySnapshot<Map<String, dynamic>>> get _queryStream {
+    final col = FirebaseFirestore.instance
+        .collection('queries')
+        .orderBy('timestamp', descending: true);
+    return _viewMy == 1
+        ? col.where('uid', isEqualTo: _myUid).snapshots()
+        : col.snapshots();
+  }
+
+  /// Post new query (stores in both title & text so QueryCard shows it)
+  Future<void> _postNewQuery() async {
+    final text = _newQueryController.text.trim();
+    if (text.isEmpty || _me == null) return;
+    await FirebaseFirestore.instance.collection('queries').add({
+      'author': _myName,
+      'title': text,
+      'text': text,
+      'uid': _myUid,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    _newQueryController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final displayList = _viewMy == 0 ? _allQueries : _myQueries;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -83,11 +74,12 @@ class _QueriesScreenState extends State<QueriesScreen> {
             const SizedBox(height: 24),
             Text(
               'Queries Section',
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
+
+            // — Post-a-query input bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -96,13 +88,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
                   hintText: 'Post your question...',
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.send_outlined),
-                    onPressed: () {
-                      final text = _newQueryController.text.trim();
-                      if (text.isNotEmpty) {
-                        // TODO: handle posting the new query
-                        _newQueryController.clear();
-                      }
-                    },
+                    onPressed: _postNewQuery,
                   ),
                   filled: true,
                   fillColor: Colors.grey.shade200,
@@ -111,25 +97,55 @@ class _QueriesScreenState extends State<QueriesScreen> {
                     borderSide: BorderSide.none,
                   ),
                 ),
+                onSubmitted: (_) => _postNewQuery(),
               ),
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 16),
+            // — Toggle All vs. My
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ChoiceChip(
+                  label: const Text('All Queries'),
+                  selected: _viewMy == 0,
+                  onSelected: (_) => setState(() => _viewMy = 0),
+                ),
+                const SizedBox(width: 12),
+                ChoiceChip(
+                  label: const Text('My Queries'),
+                  selected: _viewMy == 1,
+                  onSelected: (_) => setState(() => _viewMy = 1),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // — Live list
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                itemCount: displayList.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (_, i) {
-                  final q = displayList[i];
-                  return QueryCard(
-                    author: q['author']!,
-                    title: q['title']!,
-                    text: q['text']!,
-                    onAnswer: () {
-                      // TODO: handle Answer
-                    },
-                    onOthers: () {
-                      // TODO: handle Others Answers
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _queryStream,
+                builder: (ctx, snap) {
+                  if (snap.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final docs = snap.data?.docs ?? [];
+                  if (docs.isEmpty) {
+                    return const Center(child: Text('No queries yet.'));
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (_, i) {
+                      final data = docs[i].data();
+                      return QueryCard(
+                        author: data['author'] as String,
+                        title: data['title'] as String,
+                        text: data['text'] as String,
+                        onAnswer: () {/* TODO */},
+                        onOthers: () {/* TODO */},
+                      );
                     },
                   );
                 },
@@ -149,7 +165,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        onPressed: () => Navigator.pushNamed(context, '/ai_chat'),
+        onPressed: () => Navigator.pushNamed(context, AIChatScreen.routeName),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
@@ -200,14 +216,27 @@ class _QueriesScreenState extends State<QueriesScreen> {
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: ListView.separated(
-                  itemCount: _topQueries.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (_, i) {
-                    final t = _topQueries[i];
-                    return ListTile(
-                      title: Text(t['title']!),
-                      trailing: Text('${t['engagements']} 👍'),
+                child: FutureBuilder<QuerySnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('queries')
+                      .orderBy('timestamp', descending: true)
+                      .limit(10)
+                      .get(),
+                  builder: (ctx, snap) {
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final top = snap.data!.docs;
+                    return ListView.separated(
+                      itemCount: top.length,
+                      separatorBuilder: (_, __) => const Divider(),
+                      itemBuilder: (_, i) {
+                        final d = top[i].data() as Map<String, dynamic>;
+                        return ListTile(
+                          title: Text(d['title'] as String),
+                          trailing: const Icon(Icons.thumb_up_outlined),
+                        );
+                      },
                     );
                   },
                 ),
