@@ -14,7 +14,7 @@ import 'screens/student_feed/student_feed_screen.dart';
 import 'screens/discussions/group_discussions_screen.dart';
 import 'screens/queries/queries_screen.dart';
 import 'screens/guidance/guidance_screen.dart';
-import 'screens/guidance/guidance_chat_screen.dart'; // <-- Added
+import 'screens/guidance/guidance_chat_screen.dart';
 import 'screens/ai_chat/ai_chat_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/settings/settings_screen.dart';
@@ -61,13 +61,20 @@ class CampusConnectApp extends StatelessWidget {
         HomeScreen.routeName: (context) => const HomeScreen(),
         CoursesScreen.routeName: (context) => const CoursesScreen(),
         StudentFeedScreen.routeName: (context) => StudentFeedScreen(),
-        GroupDiscussionsScreen.routeName: (context) => GroupDiscussionsScreen(),
         QueriesScreen.routeName: (context) => const QueriesScreen(),
         GuidanceScreen.routeName: (context) => const GuidanceScreen(),
         AIChatScreen.routeName: (context) => const AIChatScreen(),
         ProfileScreen.routeName: (context) => const ProfileScreen(),
         SettingsScreen.routeName: (context) => const SettingsScreen(),
         HelpCenterScreen.routeName: (context) => const HelpCenterScreen(),
+
+        // New: Dynamic group discussions route (via ModalRoute)
+        GroupDiscussionsScreen.routeName: (context) {
+          final args = ModalRoute.of(context)!.settings.arguments;
+          final groupName =
+              (args as Map<String, dynamic>?)?['groupName'] ?? 'CS23 Webtech';
+          return GroupDiscussionsScreen(groupName: groupName);
+        },
 
         // New: Guidance Chat Route with peerId and peerName
         '/guidance_chat': (context) {

@@ -2,40 +2,23 @@
 
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
-import 'summary_screen.dart'; // Updated
+import 'summary_screen.dart'; // <-- Required for navigation
 
-class GroupDiscussionsScreen extends StatelessWidget {
+class GroupDiscussionsScreen extends StatefulWidget {
+  final String groupName;
+
+  const GroupDiscussionsScreen({Key? key, required this.groupName})
+      : super(key: key);
+
   static const routeName = '/discussions';
-  GroupDiscussionsScreen({Key? key}) : super(key: key);
 
+  @override
+  State<GroupDiscussionsScreen> createState() => _GroupDiscussionsScreenState();
+}
+
+class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  static const _messages = [
-    {
-      'author': 'Torh',
-      'avatar': 'assets/images/student1.jpg',
-      'text':
-          'Hey guys, I was going through web technologies, and I’m a bit confused about the difference between frontend and backend. Can someone explain?',
-    },
-    {
-      'author': 'Sarah',
-      'avatar': 'assets/images/student2.jpg',
-      'text':
-          'Sure! Frontend is what users see—HTML/CSS/JS. Backend is the server-side logic, databases, APIs, etc.',
-    },
-    {
-      'author': 'Mark',
-      'avatar': 'assets/images/student3.jpg',
-      'text':
-          'Think of it like a restaurant: frontend is the dining area, backend is the kitchen.',
-    },
-    {
-      'author': 'Lisa',
-      'avatar': 'assets/images/student4.jpg',
-      'text':
-          'Modern apps often use full-stack—one dev handles both with MERN, Django, etc.',
-    },
-  ];
+  final _controller = TextEditingController();
 
   static const _myGroups = [
     'Flutter Devs',
@@ -63,9 +46,51 @@ class GroupDiscussionsScreen extends StatelessWidget {
     {'name': 'History Buffs', 'score': '7.5'},
   ];
 
+  final Map<String, List<Map<String, String>>> _messagesPerGroup = {
+    'Flutter Devs': [],
+    'Data Science Club': [],
+    'Robotics Team': [],
+    'Math Enthusiasts': [],
+    'History Buffs': [],
+    'AI Researchers': [],
+    'UX Designers': [],
+    'Mobile Ninjas': [],
+    'Cybersecurity': [],
+    'Game Dev Guild': [],
+    'CS23 Webtech': [
+      {
+        'author': 'Torh',
+        'avatar': 'assets/images/student1.jpg',
+        'text':
+            'Hey guys, I was going through web technologies, and I’m a bit confused about the difference between frontend and backend. Can someone explain?',
+      },
+      {
+        'author': 'Sarah',
+        'avatar': 'assets/images/student2.jpg',
+        'text':
+            'Sure! Frontend is what users see—HTML/CSS/JS. Backend is the server-side logic, databases, APIs, etc.',
+      },
+    ],
+  };
+
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _messagesPerGroup[widget.groupName] ??= [];
+      _messagesPerGroup[widget.groupName]!.add({
+        'author': 'You',
+        'avatar': 'assets/images/student1.jpg',
+        'text': text,
+      });
+      _controller.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final messages = _messagesPerGroup[widget.groupName] ?? [];
 
     return Scaffold(
       key: _scaffoldKey,
@@ -85,7 +110,7 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'CS23 Webtech',
+                        widget.groupName,
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -93,11 +118,11 @@ class GroupDiscussionsScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Expanded(
                         child: ListView.separated(
-                          itemCount: _messages.length,
+                          itemCount: messages.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: 8),
                           itemBuilder: (ctx, i) {
-                            final m = _messages[i];
+                            final m = messages[i];
                             return _MessageBubble(
                               author: m['author']!,
                               avatarPath: m['avatar']!,
@@ -115,8 +140,10 @@ class GroupDiscussionsScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    final prompt = _messages
-                        .map((m) => '${m['author']}: ${m['text']}')
+                    final groupMessages =
+                        _messagesPerGroup[widget.groupName] ?? [];
+                    final prompt = groupMessages
+                        .map((m) => '${m["author"]}: ${m["text"]}')
                         .join('\n');
 
                     Navigator.push(
@@ -142,12 +169,12 @@ class GroupDiscussionsScreen extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.camera_alt_outlined),
-                    onPressed: null,
+                    onPressed: () {},
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
-                      enabled: false,
+                      controller: _controller,
                       decoration: InputDecoration(
                         hintText: 'Start the discussion',
                         contentPadding: const EdgeInsets.symmetric(
@@ -163,7 +190,7 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.send_outlined),
-                    onPressed: null,
+                    onPressed: _sendMessage,
                   ),
                 ],
               ),
@@ -247,7 +274,17 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   itemBuilder: (_, i) => ListTile(
                     leading: const Icon(Icons.group),
                     title: Text(_myGroups[i]),
-                    onTap: () => Navigator.pop(c),
+                    onTap: () {
+                      Navigator.pop(c);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => GroupDiscussionsScreen(
+                            groupName: _myGroups[i],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
