@@ -13,12 +13,9 @@ class GuidanceScreen extends StatefulWidget {
 class _GuidanceScreenState extends State<GuidanceScreen>
     with SingleTickerProviderStateMixin {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
-  late final TabController _tabController = TabController(
-    length: 2,
-    vsync: this,
-  );
+  late TabController _tabController;
 
-  static const _chatPeers = [
+  final List<Map<String, String>> _chatPeers = [
     {
       'name': 'Alice Nguyen',
       'avatar': 'assets/images/student1.jpg',
@@ -69,7 +66,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     },
   ];
 
-  static const _requests = [
+  final List<Map<String, String>> _requests = [
     {
       'name': 'Ibrahim Khan',
       'avatar': 'assets/images/student9.jpg',
@@ -112,7 +109,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     },
   ];
 
-  static const _peerRankings = [
+  final List<Map<String, String>> _peerRankings = [
     {'name': 'Alice Nguyen', 'score': '9.8'},
     {'name': 'Emma García', 'score': '9.5'},
     {'name': 'Bruno Silva', 'score': '9.3'},
@@ -124,6 +121,12 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     {'name': 'Ibrahim Khan', 'score': '7.8'},
     {'name': 'Julia Roberts', 'score': '7.5'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
 
   @override
   void dispose() {
@@ -217,7 +220,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                             context,
                             MaterialPageRoute(
                               builder: (_) => GuidanceChatScreen(
-                                peerId: 'peer_$i', // Replace with real UID
+                                peerId: 'peer_$i',
                                 peerName: p['name']!,
                               ),
                             ),
@@ -238,7 +241,17 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                         ),
                         title: Text(r['name']!),
                         subtitle: Text(r['request']!),
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => GuidanceChatScreen(
+                                peerId: 'request_$i',
+                                peerName: r['name']!,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
