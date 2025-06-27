@@ -122,23 +122,36 @@ class _HomeScreenState extends State<HomeScreen> {
                         switch (f['title']) {
                           case 'Courses':
                             Navigator.pushNamed(
-                                context, CoursesScreen.routeName);
+                              context,
+                              CoursesScreen.routeName,
+                            );
                             break;
-                          case 'Student Profiles':
+                          case 'Student Feed':
                             Navigator.pushNamed(
-                                context, StudentFeedScreen.routeName);
+                              context,
+                              StudentFeedScreen.routeName,
+                            );
                             break;
                           case 'Group Discussions':
                             Navigator.pushNamed(
-                                context, GroupDiscussionsScreen.routeName);
+                              context,
+                              GroupDiscussionsScreen.routeName,
+                            );
                             break;
                           case 'One-to-one Guidance':
                             Navigator.pushNamed(
-                                context, GuidanceScreen.routeName);
+                              context,
+                              GuidanceScreen.routeName,
+                            );
                             break;
                           case 'Queries Section':
                             Navigator.pushNamed(
-                                context, QueriesScreen.routeName);
+                              context,
+                              QueriesScreen.routeName,
+                            );
+                            break;
+                          default:
+                            // no-op
                             break;
                         }
                       },
@@ -225,18 +238,29 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.pushNamed(context, GuidanceScreen.routeName);
           }),
           _drawerRowItem(Icons.group_outlined, 'My Group', () {
-            Navigator.pushNamed(context, GroupDiscussionsScreen.routeName);
+            Navigator.pushNamed(
+              context,
+              GroupDiscussionsScreen.routeName,
+            );
           }),
           _drawerRowItem(Icons.menu_book_outlined, 'My Courses', () {
-            Navigator.pushNamed(context, CoursesScreen.routeName);
+            Navigator.pushNamed(
+              context,
+              CoursesScreen.routeName,
+            );
           }),
           _drawerRowItem(Icons.question_answer_outlined, 'My Queries', () {
-            Navigator.pushNamed(context, QueriesScreen.routeName);
+            Navigator.pushNamed(
+              context,
+              QueriesScreen.routeName,
+            );
           }),
           _drawerRowItem(Icons.settings_outlined, 'Settings', () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              MaterialPageRoute(
+                builder: (context) => const SettingsScreen(),
+              ),
             );
           }),
           const Divider(),

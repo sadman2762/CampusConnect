@@ -1,6 +1,9 @@
 // lib/screens/discussions/group_discussions_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart'; // <-- Required for navigation
 
@@ -20,77 +23,58 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _controller = TextEditingController();
 
-  static const _myGroups = [
-    'Flutter Devs',
-    'Data Science Club',
-    'Robotics Team',
-    'Math Enthusiasts',
-    'History Buffs',
-    'AI Researchers',
-    'UX Designers',
-    'Mobile Ninjas',
-    'Cybersecurity',
-    'Game Dev Guild',
-  ];
+  User? get _me => FirebaseAuth.instance.currentUser;
+  String get _myName => _me?.email?.split('@').first ?? 'You';
+  String get _myAvatar => 'assets/images/student1.jpg';
 
-  static const _rankings = [
-    {'name': 'Flutter Devs', 'score': '9.8'},
-    {'name': 'AI Researchers', 'score': '9.5'},
-    {'name': 'Data Science Club', 'score': '9.3'},
-    {'name': 'Cybersecurity', 'score': '9.0'},
-    {'name': 'Robotics Team', 'score': '8.7'},
-    {'name': 'Game Dev Guild', 'score': '8.5'},
-    {'name': 'UX Designers', 'score': '8.2'},
-    {'name': 'Mobile Ninjas', 'score': '8.0'},
-    {'name': 'Math Enthusiasts', 'score': '7.8'},
-    {'name': 'History Buffs', 'score': '7.5'},
-  ];
+  /// Firestore collection for this group's messages
+  CollectionReference<Map<String, dynamic>> get _messagesCol =>
+      FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupName)
+          .collection('messages');
 
-  final Map<String, List<Map<String, String>>> _messagesPerGroup = {
-    'Flutter Devs': [],
-    'Data Science Club': [],
-    'Robotics Team': [],
-    'Math Enthusiasts': [],
-    'History Buffs': [],
-    'AI Researchers': [],
-    'UX Designers': [],
-    'Mobile Ninjas': [],
-    'Cybersecurity': [],
-    'Game Dev Guild': [],
-    'CS23 Webtech': [
-      {
-        'author': 'Torh',
-        'avatar': 'assets/images/student1.jpg',
-        'text':
-            'Hey guys, I was going through web technologies, and I’m a bit confused about the difference between frontend and backend. Can someone explain?',
-      },
-      {
-        'author': 'Sarah',
-        'avatar': 'assets/images/student2.jpg',
-        'text':
-            'Sure! Frontend is what users see—HTML/CSS/JS. Backend is the server-side logic, databases, APIs, etc.',
-      },
-    ],
-  };
+  /// Stream of messages ordered by timestamp
+  Stream<QuerySnapshot<Map<String, dynamic>>> get _messagesStream =>
+      _messagesCol.orderBy('timestamp').snapshots();
 
-  void _sendMessage() {
+  /// Send a new message to Firestore
+  Future<void> _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
-    setState(() {
-      _messagesPerGroup[widget.groupName] ??= [];
-      _messagesPerGroup[widget.groupName]!.add({
-        'author': 'You',
-        'avatar': 'assets/images/student1.jpg',
-        'text': text,
-      });
-      _controller.clear();
+    if (text.isEmpty || _me == null) return;
+    await _messagesCol.add({
+      'author': _myName,
+      'avatar': _myAvatar,
+      'text': text,
+      'timestamp': FieldValue.serverTimestamp(),
     });
+    _controller.clear();
+  }
+
+  /// Fetch all messages once for summary
+  Future<void> _generateSummary() async {
+    final snapshot = await _messagesCol.orderBy('timestamp').get();
+    final docs = snapshot.docs;
+    final prompt = docs
+        .map((d) => '${d.data()['author']}: ${d.data()['text']}')
+        .join('\n');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SummaryScreen(prompt: prompt),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final messages = _messagesPerGroup[widget.groupName] ?? [];
 
     return Scaffold(
       key: _scaffoldKey,
@@ -116,17 +100,34 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      // Firestore-backed message list
                       Expanded(
-                        child: ListView.separated(
-                          itemCount: messages.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (ctx, i) {
-                            final m = messages[i];
-                            return _MessageBubble(
-                              author: m['author']!,
-                              avatarPath: m['avatar']!,
-                              text: m['text']!,
+                        child:
+                            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                          stream: _messagesStream,
+                          builder: (ctx, snap) {
+                            if (snap.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final messages = snap.data?.docs ?? [];
+                            if (messages.isEmpty) {
+                              return const Center(
+                                  child: Text('No messages yet.'));
+                            }
+                            return ListView.separated(
+                              itemCount: messages.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (_, i) {
+                                final m = messages[i].data();
+                                return _MessageBubble(
+                                  author: m['author'] as String,
+                                  avatarPath: m['avatar'] as String,
+                                  text: m['text'] as String,
+                                );
+                              },
                             );
                           },
                         ),
@@ -135,24 +136,14 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // Generate Summary
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final groupMessages =
-                        _messagesPerGroup[widget.groupName] ?? [];
-                    final prompt = groupMessages
-                        .map((m) => '${m["author"]}: ${m["text"]}')
-                        .join('\n');
-
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SummaryScreen(prompt: prompt),
-                      ),
-                    );
-                  },
+                  onPressed: _generateSummary,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.purple.shade50,
                     foregroundColor: Colors.purple,
@@ -164,7 +155,10 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   child: const Text('Generate Summary'),
                 ),
               ),
+
               const SizedBox(height: 16),
+
+              // Input bar
               Row(
                 children: [
                   IconButton(
@@ -178,9 +172,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                       decoration: InputDecoration(
                         hintText: 'Start the discussion',
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                            horizontal: 12, vertical: 10),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -322,6 +314,33 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
       ),
     );
   }
+
+  // keep your existing static lists
+  static const _myGroups = [
+    'Flutter Devs',
+    'Data Science Club',
+    'Robotics Team',
+    'Math Enthusiasts',
+    'History Buffs',
+    'AI Researchers',
+    'UX Designers',
+    'Mobile Ninjas',
+    'Cybersecurity',
+    'Game Dev Guild',
+  ];
+
+  static const _rankings = [
+    {'name': 'Flutter Devs', 'score': '9.8'},
+    {'name': 'AI Researchers', 'score': '9.5'},
+    {'name': 'Data Science Club', 'score': '9.3'},
+    {'name': 'Cybersecurity', 'score': '9.0'},
+    {'name': 'Robotics Team', 'score': '8.7'},
+    {'name': 'Game Dev Guild', 'score': '8.5'},
+    {'name': 'UX Designers', 'score': '8.2'},
+    {'name': 'Mobile Ninjas', 'score': '8.0'},
+    {'name': 'Math Enthusiasts', 'score': '7.8'},
+    {'name': 'History Buffs', 'score': '7.5'},
+  ];
 }
 
 class _MessageBubble extends StatelessWidget {
