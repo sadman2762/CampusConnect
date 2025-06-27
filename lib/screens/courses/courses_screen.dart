@@ -5,7 +5,6 @@ import '../../widgets/custom_bottom_nav.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
 import 'widgets/course_card.dart';
-import 'widgets/update_item.dart';
 
 class CoursesScreen extends StatefulWidget {
   static const routeName = '/courses';
@@ -15,40 +14,127 @@ class CoursesScreen extends StatefulWidget {
   State<CoursesScreen> createState() => _CoursesScreenState();
 }
 
-class _CoursesScreenState extends State<CoursesScreen>
-    with SingleTickerProviderStateMixin {
+class _CoursesScreenState extends State<CoursesScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey();
-  final GlobalKey _searchKey = GlobalKey();
-  late final TabController _tabController;
-  late final ScrollController _scrollController;
 
-  final List<Map<String, String>> _courses = [
+  // --- Data for the three course categories ---
+  final List<Map<String, String>> _mathAndCs = [
+    {
+      'title': 'Logic in Computer Science',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Discrete Mathematics', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Computer Aided Math & Visualization',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Data Structures & Algorithms',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Calculus', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Applied Statistics', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Introduction to Computer Science',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Applied Mathematics', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Foundations of Artificial Intelligence',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Foundations of Computer Security',
+      'image': 'assets/images/courses.jpg'
+    },
+  ];
+
+  final List<Map<String, String>> _informaticsCompulsory = [
     {
       'title': 'Introduction to Programming',
-      'image': 'assets/images/courses.jpg',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Operating Systems', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Database Systems', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Database Systems Lab', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Network Architectures & Protocols',
+      'image': 'assets/images/courses.jpg'
     },
     {
-      'title': 'High-Level Programming Languages',
-      'image': 'assets/images/profiles.jpg',
+      'title': 'High‐Level Programming Languages 1',
+      'image': 'assets/images/courses.jpg'
     },
-    {'title': 'Databases 101', 'image': 'assets/images/discussions.jpg'},
-    {'title': 'HLP-L3 Exams', 'image': 'assets/images/guidance.jpg'},
-    {'title': 'Web Technologies', 'image': 'assets/images/queries.jpg'},
-    {'title': 'Introduction to CS', 'image': 'assets/images/courses.jpg'},
-    {'title': 'Applied Statistics', 'image': 'assets/images/profiles.jpg'},
-    {'title': 'Software Engineering', 'image': 'assets/images/discussions.jpg'},
+    {
+      'title': 'High‐Level Programming Languages 2',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Web Technologies', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Software Engineering & Technologies',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Software Development Methodologies',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Web Application Development',
+      'image': 'assets/images/courses.jpg'
+    },
   ];
 
-  final List<String> _updates = [
-    'Dates of HLP-L0 exams announced next month.',
-    'HLP-L1 syllabus updated—check new topics.',
-    'HLP-L2 practice quiz posted.',
-    'HLP-L3 sample paper released.',
-    'Lab sessions canceled this Friday.',
-    'Guest lecture scheduled on Monday.',
-    'Course feedback form is now open.',
+  final List<Map<String, String>> _informaticsDifferentiated = [
+    {'title': '3D Printing & Modeling', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Cloud Computing', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Basics of GIS', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Bioinformatics', 'image': 'assets/images/courses.jpg'},
+    {'title': 'E-Sport', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Operation of Infocom Systems',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Image Processing in Practice',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'High‐Level Programming Languages 3',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Scripting Languages', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Intro to 3D Game Dev', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Compilers', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Machine Learning in Practice',
+      'image': 'assets/images/courses.jpg'
+    },
+    {
+      'title': 'Advanced Database Knowledge',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'NoSQL Databases', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Info & Coding Theory', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Mobile Application Development',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Computer Statistics', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Software Testing', 'image': 'assets/images/courses.jpg'},
+    {'title': 'Advanced Data Security', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Advanced Web Technologies',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Blockchain Technology', 'image': 'assets/images/courses.jpg'},
+    {
+      'title': 'Intro to Reinforcement Learning',
+      'image': 'assets/images/courses.jpg'
+    },
+    {'title': 'Professional Training', 'image': 'assets/images/courses.jpg'},
   ];
 
+  // --- Data for Top‐Ranked sidebar ---
   final List<Map<String, dynamic>> _topCourses = [
     {'title': 'Data Structures', 'rating': 9.5},
     {'title': 'Algorithms', 'rating': 9.2},
@@ -58,42 +144,119 @@ class _CoursesScreenState extends State<CoursesScreen>
     {'title': 'Intro to CS', 'rating': 8.0},
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _scrollController = ScrollController();
-  }
+  // --- Data for Notifications sidebar ---
+  final List<String> _notifications = [
+    'Dates of HLP-L0 exams announced next month.',
+    'HLP-L1 syllabus updated—check new topics.',
+    'HLP-L2 practice quiz posted.',
+    'HLP-L3 sample paper released.',
+    'Lab sessions canceled this Friday.',
+    'Guest lecture scheduled on Monday.',
+    'Course feedback form is now open.',
+  ];
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _goToNotifications() => _tabController.animateTo(1);
-
-  void _scrollToSearch() {
-    if (_searchKey.currentContext != null) {
-      Scrollable.ensureVisible(
-        _searchKey.currentContext!,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        alignment: 0.1,
-      );
-    }
-  }
-
+  void _openNotifications() => _scaffoldKey.currentState?.openDrawer();
   void _openRanking() => _scaffoldKey.currentState?.openEndDrawer();
+
+  Widget _buildSection(String title, List<Map<String, String>> list) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 140,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: list.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (ctx, i) {
+              final c = list[i];
+              return CourseCard(
+                title: c['title']!,
+                imagePath: c['image']!,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final height = MediaQuery.of(context).size.height;
-
     return Scaffold(
       key: _scaffoldKey,
+
+      // Left drawer → Notifications
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Text(
+                  'Notifications',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: _notifications.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (ctx, i) => ListTile(
+                    title: Text(_notifications[i]),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      // Right drawer → Top Ranked Courses
+      endDrawer: Drawer(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Top Ranked Courses',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _topCourses.length,
+                    itemBuilder: (ctx, i) {
+                      final c = _topCourses[i];
+                      return ListTile(
+                        title: Text(c['title']),
+                        trailing: Text('${c['rating']}/10'),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+
       backgroundColor: Colors.white,
       floatingActionButton: CustomBottomNav.fab(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -101,158 +264,70 @@ class _CoursesScreenState extends State<CoursesScreen>
         shape: const CircularNotchedRectangle(),
         notchMargin: 6,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               IconButton(
                 icon: const Icon(Icons.home_outlined),
                 onPressed: () => Navigator.pushReplacementNamed(
-                    context, HomeScreen.routeName),
+                  context,
+                  HomeScreen.routeName,
+                ),
               ),
+
+              // Notifications Icon
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
-                onPressed: _goToNotifications,
+                onPressed: _openNotifications,
               ),
+
+              // Spacer for FAB notch
               const SizedBox(width: 48),
+
+              // Ranking Icon
               IconButton(
                 icon: const Icon(Icons.leaderboard_outlined),
                 onPressed: _openRanking,
               ),
+
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () => Navigator.pushReplacementNamed(
-                    context, ProfileScreen.routeName),
-              ),
-            ],
-          ),
-        ),
-      ),
-      endDrawer: Drawer(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Top Ranked Courses',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _topCourses.length,
-                  itemBuilder: (ctx, i) {
-                    final c = _topCourses[i];
-                    return ListTile(
-                      title: Text(c['title']),
-                      trailing: Text('${c['rating']}/10'),
-                    );
-                  },
+                  context,
+                  ProfileScreen.routeName,
                 ),
               ),
             ],
           ),
         ),
       ),
+
       body: SafeArea(
         child: SingleChildScrollView(
-          controller: _scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Text(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Centered title
+              Center(
+                child: Text(
                   'Courses',
-                  style: textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Explore a variety of courses with detailed information on topics, exam patterns, and more to enhance your academic journey.',
-                  style: textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
+              ),
+              const SizedBox(height: 24),
 
-                // Search field
-                Container(
-                  key: _searchKey,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search for Courses',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.grey.shade200,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                SizedBox(
-                  height: 140,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _courses.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (ctx, i) {
-                      final c = _courses[i];
-                      return CourseCard(
-                        title: c['title']!,
-                        imagePath: c['image']!,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                TabBar(
-                  controller: _tabController,
-                  labelColor: Colors.black,
-                  unselectedLabelColor: Colors.grey,
-                  indicator: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  tabs: const [
-                    Tab(text: 'Updates'),
-                    Tab(text: 'Notifications'),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                SizedBox(
-                  height: height * 0.5,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      ListView.separated(
-                        padding: const EdgeInsets.only(top: 16),
-                        itemCount: _updates.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (ctx, i) => UpdateItem(text: _updates[i]),
-                      ),
-                      ListView.separated(
-                        padding: const EdgeInsets.only(top: 16),
-                        itemCount: _updates.length,
-                        separatorBuilder: (_, __) => const Divider(),
-                        itemBuilder: (ctx, i) => UpdateItem(text: _updates[i]),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              // Three sections:
+              _buildSection('Mathematics & Computer Science', _mathAndCs),
+              _buildSection(
+                  'Informatics (Compulsory Topics)', _informaticsCompulsory),
+              _buildSection('Informatics (Differentiated Knowledge)',
+                  _informaticsDifferentiated),
+            ],
           ),
         ),
       ),
