@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'image': 'assets/images/courses.jpg',
     },
     {
-      'title': 'Student Profiles',
+      'title': 'Student Feed',
       'subtitle': 'Customize your profile and contribute to our community.',
       'image': 'assets/images/profiles.jpg',
     },

@@ -13,6 +13,7 @@ class QueriesScreen extends StatefulWidget {
 class _QueriesScreenState extends State<QueriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _viewMy = 0; // 0 = all queries, 1 = my queries
+  final _newQueryController = TextEditingController();
 
   static const _allQueries = [
     {
@@ -62,6 +63,12 @@ class _QueriesScreenState extends State<QueriesScreen> {
   ];
 
   @override
+  void dispose() {
+    _newQueryController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
@@ -83,19 +90,20 @@ class _QueriesScreenState extends State<QueriesScreen> {
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                'Post your questions related to university life and get answers from experienced peers, contributing to your profile ranking.',
-                style: textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
+                controller: _newQueryController,
                 decoration: InputDecoration(
-                  hintText: 'Search for Topics',
-                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Post your question...',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send_outlined),
+                    onPressed: () {
+                      final text = _newQueryController.text.trim();
+                      if (text.isNotEmpty) {
+                        // TODO: handle posting the new query
+                        _newQueryController.clear();
+                      }
+                    },
+                  ),
                   filled: true,
                   fillColor: Colors.grey.shade200,
                   border: OutlineInputBorder(
