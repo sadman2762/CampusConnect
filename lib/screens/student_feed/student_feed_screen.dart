@@ -1,9 +1,11 @@
 // lib/screens/student_feed/student_feed_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../widgets/custom_bottom_nav.dart';
 import '../home/home_screen.dart';
-import '../profile/profile_screen.dart'; // ✅ Added
+import '../profile/profile_screen.dart';
+import '../profile/student_profile_screen.dart';
 import 'widgets/avatar_list.dart';
 import 'widgets/feed_card.dart';
 
@@ -15,57 +17,85 @@ class StudentFeedScreen extends StatelessWidget {
   StudentFeedScreen({Key? key}) : super(key: key);
 
   static const List<Map<String, String>> _students = [
-    {'name': 'Piroska Peter', 'avatar': 'assets/images/student1.jpg'},
-    {'name': 'Anna Janos', 'avatar': 'assets/images/student2.jpg'},
-    {'name': 'Liu Wei', 'avatar': 'assets/images/student3.jpg'},
-    {'name': 'Sara Müller', 'avatar': 'assets/images/student4.jpg'},
-    {'name': 'Omar Ali', 'avatar': 'assets/images/student5.jpg'},
-    {'name': 'Noah Smith', 'avatar': 'assets/images/student6.jpg'},
-    {'name': 'Emma Brown', 'avatar': 'assets/images/student7.jpg'},
-  ];
-
-  static const List<Map<String, String>> _feed = [
     {
       'name': 'Piroska Peter',
       'avatar': 'assets/images/student1.jpg',
-      'content':
-          'Started learning Unity 3D, and wow—it’s a game-changer! 🔥 From debugging battles to the thrill of seeing my project come to life. Can’t wait for more! #Unity3D #GameDev #StudentLife',
+      'studentId': 'uid_001'
     },
     {
       'name': 'Anna Janos',
       'avatar': 'assets/images/student2.jpg',
-      'content':
-          'Just presented my research on sustainable architecture. 🏛️ Feeling proud of the hard work paying off. Next stop: publication! #Architecture #Research',
+      'studentId': 'uid_002'
     },
     {
       'name': 'Liu Wei',
       'avatar': 'assets/images/student3.jpg',
-      'content':
-          'Dug into data structures today—linked lists and trees are fascinating once you get the hang of them! 🌳 #DataStructures',
+      'studentId': 'uid_003'
     },
     {
       'name': 'Sara Müller',
       'avatar': 'assets/images/student4.jpg',
-      'content':
-          'Practicing for my calculus exam. Integrals were tough at first, but practice makes perfect. 📐 #Calculus',
+      'studentId': 'uid_004'
     },
     {
       'name': 'Omar Ali',
       'avatar': 'assets/images/student5.jpg',
-      'content':
-          'Group project meeting went great! Collaborating over Zoom with peers is a new experience. #Collaboration',
+      'studentId': 'uid_005'
     },
     {
       'name': 'Noah Smith',
       'avatar': 'assets/images/student6.jpg',
-      'content':
-          'Finished my first Android app with Flutter. Hot reload is a lifesaver! 🚀 #Flutter',
+      'studentId': 'uid_006'
     },
     {
       'name': 'Emma Brown',
       'avatar': 'assets/images/student7.jpg',
-      'content':
-          'Volunteered at the campus library today—met so many interesting people. 📚 #CampusLife',
+      'studentId': 'uid_007'
+    },
+  ];
+
+  static const List<Map<String, String>> _feed = [
+    {
+      'studentId': 'uid_001',
+      'name': 'Piroska Peter',
+      'avatar': 'assets/images/student1.jpg',
+      'content': 'Started learning Unity 3D...'
+    },
+    {
+      'studentId': 'uid_002',
+      'name': 'Anna Janos',
+      'avatar': 'assets/images/student2.jpg',
+      'content': 'Just presented my research...'
+    },
+    {
+      'studentId': 'uid_003',
+      'name': 'Liu Wei',
+      'avatar': 'assets/images/student3.jpg',
+      'content': 'Dug into data structures today...'
+    },
+    {
+      'studentId': 'uid_004',
+      'name': 'Sara Müller',
+      'avatar': 'assets/images/student4.jpg',
+      'content': 'Practicing for my calculus exam...'
+    },
+    {
+      'studentId': 'uid_005',
+      'name': 'Omar Ali',
+      'avatar': 'assets/images/student5.jpg',
+      'content': 'Group project meeting went great...'
+    },
+    {
+      'studentId': 'uid_006',
+      'name': 'Noah Smith',
+      'avatar': 'assets/images/student6.jpg',
+      'content': 'Finished my first Android app...'
+    },
+    {
+      'studentId': 'uid_007',
+      'name': 'Emma Brown',
+      'avatar': 'assets/images/student7.jpg',
+      'content': 'Volunteered at the campus library...'
     },
   ];
 
@@ -243,6 +273,7 @@ class StudentFeedScreen extends StatelessWidget {
                       name: item['name']!,
                       avatarPath: item['avatar']!,
                       content: item['content']!,
+                      studentId: item['studentId']!,
                     );
                   },
                 ),
