@@ -74,32 +74,6 @@ class GroupDiscussionsScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Column(
             children: [
-              Text(
-                'Group Discussions',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Initiate or join discussions on various academic or campus-related topics to share insights and learn from others.',
-                style: textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search for Discussions',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.grey.shade200,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
@@ -110,7 +84,7 @@ class GroupDiscussionsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Generating Title…',
+                        'CS23 Webtech',
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
