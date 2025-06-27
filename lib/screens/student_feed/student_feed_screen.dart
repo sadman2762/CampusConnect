@@ -9,12 +9,18 @@ import '../profile/student_profile_screen.dart';
 import 'widgets/avatar_list.dart';
 import 'widgets/feed_card.dart';
 
-class StudentFeedScreen extends StatelessWidget {
+class StudentFeedScreen extends StatefulWidget {
   static const routeName = '/student_feed';
 
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  const StudentFeedScreen({Key? key}) : super(key: key);
 
-  StudentFeedScreen({Key? key}) : super(key: key);
+  @override
+  State<StudentFeedScreen> createState() => _StudentFeedScreenState();
+}
+
+class _StudentFeedScreenState extends State<StudentFeedScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final TextEditingController _statusController = TextEditingController();
 
   static const List<Map<String, String>> _students = [
     {
@@ -54,50 +60,20 @@ class StudentFeedScreen extends StatelessWidget {
     },
   ];
 
-  static const List<Map<String, String>> _feed = [
-    {
-      'studentId': 'uid_001',
-      'name': 'Piroska Peter',
-      'avatar': 'assets/images/student1.jpg',
-      'content': 'Started learning Unity 3D...'
-    },
-    {
-      'studentId': 'uid_002',
-      'name': 'Anna Janos',
-      'avatar': 'assets/images/student2.jpg',
-      'content': 'Just presented my research...'
-    },
-    {
-      'studentId': 'uid_003',
-      'name': 'Liu Wei',
-      'avatar': 'assets/images/student3.jpg',
-      'content': 'Dug into data structures today...'
-    },
-    {
-      'studentId': 'uid_004',
-      'name': 'Sara Müller',
-      'avatar': 'assets/images/student4.jpg',
-      'content': 'Practicing for my calculus exam...'
-    },
-    {
-      'studentId': 'uid_005',
-      'name': 'Omar Ali',
-      'avatar': 'assets/images/student5.jpg',
-      'content': 'Group project meeting went great...'
-    },
-    {
-      'studentId': 'uid_006',
-      'name': 'Noah Smith',
-      'avatar': 'assets/images/student6.jpg',
-      'content': 'Finished my first Android app...'
-    },
-    {
-      'studentId': 'uid_007',
-      'name': 'Emma Brown',
-      'avatar': 'assets/images/student7.jpg',
-      'content': 'Volunteered at the campus library...'
-    },
-  ];
+  final List<Map<String, String>> _feed = [];
+
+  void _postStatus() {
+    if (_statusController.text.trim().isEmpty) return;
+    setState(() {
+      _feed.insert(0, {
+        'studentId': 'uid_001',
+        'name': 'Piroska Peter',
+        'avatar': 'assets/images/student1.jpg',
+        'content': _statusController.text.trim(),
+      });
+      _statusController.clear();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,30 +211,38 @@ class StudentFeedScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Student Feed',
-                style: textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Center(
+                child: Text(
+                  'Student Feed',
+                  style: textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Create and customize your personal profile, share academic posts and videos, '
-                'and view your ranking based on contributions and reviews.',
-                style: textTheme.bodyMedium,
               ),
               const SizedBox(height: 16),
-              TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search for Students',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.grey.shade200,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _statusController,
+                      decoration: InputDecoration(
+                        hintText: 'What\'s on your mind?',
+                        filled: true,
+                        fillColor: Colors.grey.shade200,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _postStatus,
+                    child: const Icon(Icons.send),
+                  )
+                ],
               ),
               const SizedBox(height: 16),
               AvatarList(students: _students),
