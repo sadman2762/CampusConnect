@@ -40,7 +40,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
   Stream<QueryDocumentSnapshot<Map<String, dynamic>>?> _getLastMessage(
       String chatId) {
     return FirebaseFirestore.instance
-        .collection('guidance_chats') // fixed path
+        .collection('guidance_chats')
         .doc(chatId)
         .collection('messages')
         .orderBy('timestamp', descending: true)
@@ -55,11 +55,40 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     return '${sorted[0]}_${sorted[1]}';
   }
 
-  String _formatTimestamp(Timestamp? timestamp) {
+  String _prettyTime(Timestamp? timestamp) {
     if (timestamp == null) return '';
     final dt = timestamp.toDate();
-    final time = TimeOfDay.fromDateTime(dt);
-    return '${dt.month}/${dt.day} ${time.format(context)}';
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+
+    if (diff.inDays == 0) {
+      return TimeOfDay.fromDateTime(dt).format(context);
+    } else if (diff.inDays == 1) {
+      return 'Yesterday';
+    } else if (now.year == dt.year) {
+      return '${_monthName(dt.month)} ${dt.day}';
+    } else {
+      return '${_monthName(dt.month)} ${dt.day}, ${dt.year}';
+    }
+  }
+
+  String _monthName(int month) {
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return months[month];
   }
 
   @override
@@ -171,7 +200,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                                 if (msgData != null) {
                                   lastText = msgData['text'] ?? lastText;
                                   formattedTime =
-                                      _formatTimestamp(msgData['timestamp']);
+                                      _prettyTime(msgData['timestamp']);
                                 }
                               }
 
@@ -192,13 +221,32 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                                                     'assets/images/profile.jpg')
                                                 as ImageProvider,
                                   ),
-                                  title: Text(name),
+                                  title: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (formattedTime.isNotEmpty)
+                                        Text(
+                                          formattedTime,
+                                          style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
                                   subtitle: Text(
-                                    '$lastText\n$formattedTime',
-                                    maxLines: 2,
+                                    lastText,
+                                    maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  isThreeLine: true,
                                   onTap: () {
                                     Navigator.push(
                                       context,
