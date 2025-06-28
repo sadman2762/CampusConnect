@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
 import '../profile/profile_screen.dart';
 import 'guidance_chat_screen.dart';
 
@@ -15,123 +18,21 @@ class _GuidanceScreenState extends State<GuidanceScreen>
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabController;
 
-  final List<Map<String, String>> _chatPeers = [
-    {
-      'name': 'Alice Nguyen',
-      'avatar': 'assets/images/student1.jpg',
-      'last': 'Sure—happy to help!',
-      'time': '09:45',
-    },
-    {
-      'name': 'Bruno Silva',
-      'avatar': 'assets/images/student2.jpg',
-      'last': 'Let’s schedule a call.',
-      'time': '08:30',
-    },
-    {
-      'name': 'Chloe Zhang',
-      'avatar': 'assets/images/student3.jpg',
-      'last': 'Notes uploaded.',
-      'time': 'Yesterday',
-    },
-    {
-      'name': 'Daniel Kim',
-      'avatar': 'assets/images/student4.jpg',
-      'last': 'Review my draft?',
-      'time': 'Tue',
-    },
-    {
-      'name': 'Emma García',
-      'avatar': 'assets/images/student5.jpg',
-      'last': 'Walkthrough ready!',
-      'time': 'Mon',
-    },
-    {
-      'name': 'Fiona Li',
-      'avatar': 'assets/images/student6.jpg',
-      'last': 'Can explain that.',
-      'time': 'Sun',
-    },
-    {
-      'name': 'George Park',
-      'avatar': 'assets/images/student7.jpg',
-      'last': 'Zoom call?',
-      'time': 'Sat',
-    },
-    {
-      'name': 'Hannah Schultz',
-      'avatar': 'assets/images/student8.jpg',
-      'last': 'Sent slides.',
-      'time': 'Fri',
-    },
-  ];
-
-  final List<Map<String, String>> _requests = [
-    {
-      'name': 'Ibrahim Khan',
-      'avatar': 'assets/images/student9.jpg',
-      'request': 'Help with stats?'
-    },
-    {
-      'name': 'Julia Roberts',
-      'avatar': 'assets/images/student10.jpg',
-      'request': 'Proofread essay?'
-    },
-    {
-      'name': 'Kira Yamamoto',
-      'avatar': 'assets/images/student11.jpg',
-      'request': 'Need chem tutor.'
-    },
-    {
-      'name': 'Leo Smith',
-      'avatar': 'assets/images/student12.jpg',
-      'request': 'Project guidance.'
-    },
-    {
-      'name': 'Mia Lopez',
-      'avatar': 'assets/images/student13.jpg',
-      'request': 'Calculus help.'
-    },
-    {
-      'name': 'Nina Patel',
-      'avatar': 'assets/images/student14.jpg',
-      'request': 'Debug my code.'
-    },
-    {
-      'name': 'Oscar Müller',
-      'avatar': 'assets/images/student15.jpg',
-      'request': 'Time management tips?'
-    },
-    {
-      'name': 'Priya Singh',
-      'avatar': 'assets/images/student16.jpg',
-      'request': 'Lecture notes please.'
-    },
-  ];
-
-  final List<Map<String, String>> _peerRankings = [
-    {'name': 'Alice Nguyen', 'score': '9.8'},
-    {'name': 'Emma García', 'score': '9.5'},
-    {'name': 'Bruno Silva', 'score': '9.3'},
-    {'name': 'Chloe Zhang', 'score': '9.0'},
-    {'name': 'Daniel Kim', 'score': '8.7'},
-    {'name': 'Fiona Li', 'score': '8.5'},
-    {'name': 'George Park', 'score': '8.2'},
-    {'name': 'Hannah Schultz', 'score': '8.0'},
-    {'name': 'Ibrahim Khan', 'score': '7.8'},
-    {'name': 'Julia Roberts', 'score': '7.5'},
-  ];
+  String? currentUserId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Stream<List<QueryDocumentSnapshot>> _getOtherUsers() {
+    return FirebaseFirestore.instance.collection('users').snapshots().map(
+      (snapshot) {
+        return snapshot.docs.where((doc) => doc.id != currentUserId).toList();
+      },
+    );
   }
 
   @override
@@ -149,23 +50,18 @@ class _GuidanceScreenState extends State<GuidanceScreen>
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Center(
-                    child: Text(
-                      'One-to-One Guidance',
-                      style: textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
+                  Text(
+                    'One-to-One Guidance',
+                    style: textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Center(
-                    child: Text(
-                      'Request personalized academic support from peers.',
-                      style: textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
+                  Text(
+                    'Request personalized academic support from peers.',
+                    style: textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -206,61 +102,71 @@ class _GuidanceScreenState extends State<GuidanceScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: _chatPeers.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (_, i) {
-                      final p = _chatPeers[i];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: AssetImage(p['avatar']!),
-                        ),
-                        title: Text(p['name']!),
-                        subtitle: Text(p['last']!),
-                        trailing: Text(
-                          p['time']!,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => GuidanceChatScreen(
-                                peerId: 'peer_$i',
-                                peerName: p['name']!,
+                  StreamBuilder<List<QueryDocumentSnapshot>>(
+                    stream: _getOtherUsers(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final users = snapshot.data!;
+                      if (users.isEmpty) {
+                        return const Center(
+                            child: Text('No registered peers found.'));
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          final uid = user.id;
+                          final email = user['email'] ?? 'Unknown';
+                          final name = email.split('@')[0];
+                          final avatar =
+                              user.data().toString().contains('photoURL')
+                                  ? user['photoURL']
+                                  : null;
+
+                          return Card(
+                            elevation: 2,
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage:
+                                    avatar != null && avatar.isNotEmpty
+                                        ? NetworkImage(avatar)
+                                        : const AssetImage(
+                                                'assets/images/profile.jpg')
+                                            as ImageProvider,
                               ),
+                              title: Text(name),
+                              subtitle: const Text('Tap to chat'),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => GuidanceChatScreen(
+                                      peerId: uid,
+                                      peerName: name,
+                                      peerAvatar: avatar,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           );
                         },
                       );
                     },
                   ),
-                  ListView.separated(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: _requests.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (_, i) {
-                      final r = _requests[i];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: AssetImage(r['avatar']!),
-                        ),
-                        title: Text(r['name']!),
-                        subtitle: Text(r['request']!),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => GuidanceChatScreen(
-                                peerId: 'request_$i',
-                                peerName: r['name']!,
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                  const Center(
+                    child: Text(
+                      'No requests yet.',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
                   ),
                 ],
               ),
@@ -328,18 +234,8 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: _peerRankings.length,
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (_, i) {
-                    final pr = _peerRankings[i];
-                    return ListTile(
-                      title: Text(pr['name']!),
-                      trailing: Text(pr['score']!),
-                    );
-                  },
-                ),
+              const Expanded(
+                child: Center(child: Text('Ranking list is empty.')),
               ),
             ],
           ),

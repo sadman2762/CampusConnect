@@ -37,13 +37,16 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     _initChat();
   }
 
+  String _getChatId(String uid1, String uid2) {
+    final sorted = [uid1, uid2]..sort();
+    return '${sorted[0]}_${sorted[1]}';
+  }
+
   Future<void> _initChat() async {
     final myId = FirebaseAuth.instance.currentUser?.uid;
     if (myId == null) return;
-    final id = await _chatService.getOrCreateChat(myId, widget.peerId);
-    setState(() {
-      _chatId = id;
-    });
+    final chatId = _getChatId(myId, widget.peerId);
+    setState(() => _chatId = chatId);
   }
 
   void _sendMessage() async {
@@ -123,7 +126,6 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                           final text = msg['text'];
                           final senderId = msg['senderId'];
                           final isMe = senderId == myId;
-
                           final isFile = text.startsWith('[FILE] ');
 
                           final timestamp = msg['timestamp'] as Timestamp?;
