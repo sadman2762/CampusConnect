@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'edit_profile_screen.dart';
+import 'change_password_screen.dart';
+import 'notifications_settings_screen.dart';
+import 'privacy_settings_screen.dart';
+import 'theme_settings_screen.dart';
+
 class SettingsScreen extends StatelessWidget {
   static const routeName = '/settings';
   const SettingsScreen({super.key});
@@ -10,7 +16,7 @@ class SettingsScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     final name = user?.displayName ?? 'sadman';
     final email = user?.email ?? 'sadman@maillbox.unid.com';
-    final photoUrl = user?.photoURL;
+    final photo = user?.photoURL;
 
     return Scaffold(
       appBar: AppBar(
@@ -32,8 +38,8 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 30,
-                    backgroundImage: photoUrl != null
-                        ? NetworkImage(photoUrl)
+                    backgroundImage: photo != null
+                        ? NetworkImage(photo)
                         : const AssetImage('assets/images/user.jpg')
                             as ImageProvider,
                   ),
@@ -55,43 +61,39 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 24),
 
             // Settings Options
             SettingsTile(
               icon: Icons.edit,
               title: 'Edit Profile',
-              onTap: () {
-                // TODO: Navigate to Edit Profile screen
-              },
+              onTap: () =>
+                  Navigator.pushNamed(context, EditProfileScreen.routeName),
             ),
             SettingsTile(
               icon: Icons.lock,
               title: 'Change Password',
-              onTap: () {
-                // TODO: Implement password reset
-              },
+              onTap: () =>
+                  Navigator.pushNamed(context, ChangePasswordScreen.routeName),
             ),
             SettingsTile(
               icon: Icons.notifications,
               title: 'Notifications',
-              onTap: () {
-                // TODO: Show notification settings
-              },
+              onTap: () => Navigator.pushNamed(
+                  context, NotificationsSettingsScreen.routeName),
             ),
             SettingsTile(
               icon: Icons.privacy_tip,
               title: 'Privacy Settings',
-              onTap: () {
-                // TODO: Navigate to privacy settings
-              },
+              onTap: () =>
+                  Navigator.pushNamed(context, PrivacySettingsScreen.routeName),
             ),
             SettingsTile(
               icon: Icons.color_lens,
               title: 'App Theme',
-              onTap: () {
-                // TODO: Theme toggle or selector
-              },
+              onTap: () =>
+                  Navigator.pushNamed(context, ThemeSettingsScreen.routeName),
             ),
 
             const SizedBox(height: 32),
@@ -101,7 +103,7 @@ class SettingsScreen extends StatelessWidget {
               onPressed: () async {
                 await FirebaseAuth.instance.signOut();
                 if (context.mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  Navigator.of(context).popUntil((r) => r.isFirst);
                 }
               },
               icon: const Icon(Icons.logout),
@@ -142,7 +144,10 @@ class SettingsTile extends StatelessWidget {
         ),
         child: Icon(icon, color: Colors.deepPurple),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+      ),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
