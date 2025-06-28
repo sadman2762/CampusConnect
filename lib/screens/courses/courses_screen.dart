@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/custom_bottom_nav.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
+import 'course_detail_screen.dart';
 import 'widgets/course_card.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -66,7 +67,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
       'image': 'assets/images/courses.jpg'
     },
     {
-      'title': 'High‐Level Programming Languages 2',
+      'title': 'High-Level Programming Languages 2',
       'image': 'assets/images/courses.jpg'
     },
     {'title': 'Web Technologies', 'image': 'assets/images/courses.jpg'},
@@ -99,7 +100,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
       'image': 'assets/images/courses.jpg'
     },
     {
-      'title': 'High‐Level Programming Languages 3',
+      'title': 'High-Level Programming Languages 3',
       'image': 'assets/images/courses.jpg'
     },
     {'title': 'Scripting Languages', 'image': 'assets/images/courses.jpg'},
@@ -134,7 +135,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     {'title': 'Professional Training', 'image': 'assets/images/courses.jpg'},
   ];
 
-  // --- Data for Top‐Ranked sidebar ---
+  // --- Data for Top-Ranked sidebar ---
   final List<Map<String, dynamic>> _topCourses = [
     {'title': 'Data Structures', 'rating': 9.5},
     {'title': 'Algorithms', 'rating': 9.2},
@@ -177,10 +178,23 @@ class _CoursesScreenState extends State<CoursesScreen> {
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (ctx, i) {
-              final c = list[i];
-              return CourseCard(
-                title: c['title']!,
-                imagePath: c['image']!,
+              final course = list[i];
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => CourseDetailScreen(
+                        courseTitle: course['title']!,
+                      ),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: CourseCard(
+                  title: course['title']!,
+                  imagePath: course['image']!,
+                ),
               );
             },
           ),
@@ -223,7 +237,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
         ),
       ),
 
-      // Right drawer → Top Ranked Courses
+      // Right drawer → Top-Ranked Courses
       endDrawer: Drawer(
         child: SafeArea(
           child: Padding(
@@ -275,22 +289,15 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   HomeScreen.routeName,
                 ),
               ),
-
-              // Notifications Icon
               IconButton(
                 icon: const Icon(Icons.notifications_outlined),
                 onPressed: _openNotifications,
               ),
-
-              // Spacer for FAB notch
-              const SizedBox(width: 48),
-
-              // Ranking Icon
+              const SizedBox(width: 48), // space for FAB
               IconButton(
                 icon: const Icon(Icons.leaderboard_outlined),
                 onPressed: _openRanking,
               ),
-
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () => Navigator.pushReplacementNamed(
@@ -321,12 +328,16 @@ class _CoursesScreenState extends State<CoursesScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Three sections:
+              // Three sections
               _buildSection('Mathematics & Computer Science', _mathAndCs),
               _buildSection(
-                  'Informatics (Compulsory Topics)', _informaticsCompulsory),
-              _buildSection('Informatics (Differentiated Knowledge)',
-                  _informaticsDifferentiated),
+                'Informatics (Compulsory Topics)',
+                _informaticsCompulsory,
+              ),
+              _buildSection(
+                'Informatics (Differentiated Knowledge)',
+                _informaticsDifferentiated,
+              ),
             ],
           ),
         ),
