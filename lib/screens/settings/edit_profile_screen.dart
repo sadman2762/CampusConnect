@@ -28,13 +28,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _univCtrl = TextEditingController();
   String _year = '1';
 
-  final _user = FirebaseAuth.instance.currentUser!;
+  User _user = FirebaseAuth.instance.currentUser!;
   final _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    // Prefill from auth & Firestore
     _nameCtrl.text = _user.displayName ?? '';
     _emailCtrl.text = _user.email ?? '';
     _firestore.collection('users').doc(_user.uid).get().then((snap) {
@@ -57,27 +56,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       String? photoURL;
 
-      // 1) Upload avatar to Storage & get URL
       if (_pickedImage != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
-            .child('user_avatars/${_user.uid}.jpg');
+            .child('profilePhotos/${_user.uid}/avatar.jpg'); // ✅ Updated path
 
         if (kIsWeb) {
           final bytes = await _pickedImage!.readAsBytes();
-          await storageRef.putData(
-              bytes, SettableMetadata(contentType: 'image/jpeg'));
+          await storageRef
+              .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
+              .timeout(const Duration(seconds: 20), onTimeout: () {
+            throw Exception('Upload timed out');
+          });
         } else {
-          await storageRef.putFile(File(_pickedImage!.path));
+          await storageRef
+              .putFile(File(_pickedImage!.path))
+              .timeout(const Duration(seconds: 20), onTimeout: () {
+            throw Exception('Upload timed out');
+          });
         }
 
         photoURL = await storageRef.getDownloadURL();
-        // Update FirebaseAuth and then reload to refresh currentUser.photoURL
         await _user.updatePhotoURL(photoURL);
         await _user.reload();
+        _user = FirebaseAuth.instance.currentUser!;
       }
 
-      // 2) Update displayName & email if changed
       if (_nameCtrl.text.trim() != _user.displayName) {
         await _user.updateDisplayName(_nameCtrl.text.trim());
       }
@@ -85,7 +89,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await _user.updateEmail(_emailCtrl.text.trim());
       }
 
-      // 3) Firestore update (bio, university, year, photoURL if any)
       final data = {
         'bio': _bioCtrl.text.trim(),
         'university': _univCtrl.text.trim(),
@@ -98,16 +101,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           .doc(_user.uid)
           .set(data, SetOptions(merge: true));
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated')),
       );
       Navigator.of(context).pop();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<ImageProvider> _getProfileImage() async {
+    if (_pickedImage != null) {
+      if (kIsWeb) {
+        final bytes = await _pickedImage!.readAsBytes();
+        return MemoryImage(bytes);
+      } else {
+        return FileImage(File(_pickedImage!.path));
+      }
+    } else if (_user.photoURL != null && _user.photoURL!.startsWith('http')) {
+      return NetworkImage(_user.photoURL!);
+    } else {
+      return const AssetImage('assets/images/profile.jpg');
     }
   }
 
@@ -133,22 +153,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
-                  // Avatar picker
                   Center(
                     child: Stack(
                       children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundImage: _pickedImage != null
-                              ? (kIsWeb
-                                      ? NetworkImage(_pickedImage!.path)
-                                      : FileImage(File(_pickedImage!.path)))
-                                  as ImageProvider
-                              : (_user.photoURL != null
-                                  ? NetworkImage(_user.photoURL!)
-                                  : const AssetImage(
-                                          'assets/images/profile.jpg')
-                                      as ImageProvider),
+                        FutureBuilder<ImageProvider>(
+                          future: _getProfileImage(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const CircleAvatar(
+                                radius: 50,
+                                backgroundImage:
+                                    AssetImage('assets/images/profile.jpg'),
+                              );
+                            }
+                            return CircleAvatar(
+                              radius: 50,
+                              backgroundImage: snapshot.data,
+                            );
+                          },
                         ),
                         Positioned(
                           bottom: 0,
@@ -169,10 +191,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Name
                   TextField(
                     controller: _nameCtrl,
                     decoration: const InputDecoration(
@@ -181,8 +200,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Email
                   TextField(
                     controller: _emailCtrl,
                     decoration: const InputDecoration(
@@ -191,8 +208,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Bio
                   TextField(
                     controller: _bioCtrl,
                     maxLines: 3,
@@ -202,8 +217,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // University
                   TextField(
                     controller: _univCtrl,
                     decoration: const InputDecoration(
@@ -212,8 +225,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Year dropdown
                   DropdownButtonFormField<String>(
                     value: _year,
                     items: ['1', '2', '3', '4', '5']
@@ -228,10 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     onChanged: (v) => setState(() => _year = v!),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Save button
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
