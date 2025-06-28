@@ -17,22 +17,49 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     with SingleTickerProviderStateMixin {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabController;
-
   String? currentUserId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      currentUserId = user.uid;
+    }
   }
 
-  Stream<List<QueryDocumentSnapshot>> _getOtherUsers() {
+  Stream<List<QueryDocumentSnapshot>> _getRegisteredUsers() {
     return FirebaseFirestore.instance.collection('users').snapshots().map(
       (snapshot) {
         return snapshot.docs.where((doc) => doc.id != currentUserId).toList();
       },
     );
+  }
+
+  Stream<QueryDocumentSnapshot<Map<String, dynamic>>?> _getLastMessage(
+      String chatId) {
+    return FirebaseFirestore.instance
+        .collection('guidance_chats') // fixed path
+        .doc(chatId)
+        .collection('messages')
+        .orderBy('timestamp', descending: true)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.isNotEmpty ? snapshot.docs.first : null);
+  }
+
+  String _getChatId(String uid1, String uid2) {
+    final sorted = [uid1, uid2]..sort();
+    return '${sorted[0]}_${sorted[1]}';
+  }
+
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+    final dt = timestamp.toDate();
+    final time = TimeOfDay.fromDateTime(dt);
+    return '${dt.month}/${dt.day} ${time.format(context)}';
   }
 
   @override
@@ -43,25 +70,30 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: Colors.white,
-      endDrawer: _buildRankingDrawer(),
+      endDrawer: Drawer(child: Center(child: Text('Top Peers Coming Soon'))),
       body: SafeArea(
         child: Column(
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    'One-to-One Guidance',
-                    style: textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+                  Center(
+                    child: Text(
+                      'One-to-One Guidance',
+                      style: textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Request personalized academic support from peers.',
-                    style: textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
+                  Center(
+                    child: Text(
+                      'Request personalized academic support from peers.',
+                      style: textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ],
               ),
@@ -103,60 +135,85 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                 controller: _tabController,
                 children: [
                   StreamBuilder<List<QueryDocumentSnapshot>>(
-                    stream: _getOtherUsers(),
+                    stream: _getRegisteredUsers(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
                       }
-
                       final users = snapshot.data!;
                       if (users.isEmpty) {
                         return const Center(
                             child: Text('No registered peers found.'));
                       }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
+                      return ListView.separated(
+                        padding: const EdgeInsets.all(24),
                         itemCount: users.length,
-                        itemBuilder: (context, index) {
-                          final user = users[index];
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (_, i) {
+                          final user = users[i];
                           final uid = user.id;
-                          final email = user['email'] ?? 'Unknown';
+                          final email = user['email'] ?? 'unknown@email.com';
                           final name = email.split('@')[0];
-                          final avatar =
-                              user.data().toString().contains('photoURL')
-                                  ? user['photoURL']
-                                  : null;
+                          final data = user.data() as Map<String, dynamic>;
+                          final avatar = data['photoURL'];
+                          final chatId = _getChatId(currentUserId!, uid);
 
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage:
-                                    avatar != null && avatar.isNotEmpty
-                                        ? NetworkImage(avatar)
-                                        : const AssetImage(
-                                                'assets/images/profile.jpg')
-                                            as ImageProvider,
-                              ),
-                              title: Text(name),
-                              subtitle: const Text('Tap to chat'),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => GuidanceChatScreen(
-                                      peerId: uid,
-                                      peerName: name,
-                                      peerAvatar: avatar,
-                                    ),
+                          return StreamBuilder<
+                              QueryDocumentSnapshot<Map<String, dynamic>>?>(
+                            stream: _getLastMessage(chatId),
+                            builder: (context, msgSnapshot) {
+                              String lastText = 'No messages yet';
+                              String formattedTime = '';
+
+                              if (msgSnapshot.hasData &&
+                                  msgSnapshot.data != null) {
+                                final msgData = msgSnapshot.data!.data();
+                                if (msgData != null) {
+                                  lastText = msgData['text'] ?? lastText;
+                                  formattedTime =
+                                      _formatTimestamp(msgData['timestamp']);
+                                }
+                              }
+
+                              return Material(
+                                color: Colors.transparent,
+                                child: ListTile(
+                                  tileColor: Colors.pink.shade50,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                );
-                              },
-                            ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 12),
+                                  leading: CircleAvatar(
+                                    backgroundImage:
+                                        avatar != null && avatar.isNotEmpty
+                                            ? NetworkImage(avatar)
+                                            : const AssetImage(
+                                                    'assets/images/profile.jpg')
+                                                as ImageProvider,
+                                  ),
+                                  title: Text(name),
+                                  subtitle: Text(
+                                    '$lastText\n$formattedTime',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  isThreeLine: true,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => GuidanceChatScreen(
+                                          peerId: uid,
+                                          peerName: name,
+                                          peerAvatar: avatar,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
                           );
                         },
                       );
@@ -222,23 +279,4 @@ class _GuidanceScreenState extends State<GuidanceScreen>
       ),
     );
   }
-
-  Widget _buildRankingDrawer() => Drawer(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Top Peers',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              const Expanded(
-                child: Center(child: Text('Ranking list is empty.')),
-              ),
-            ],
-          ),
-        ),
-      );
 }
