@@ -1,15 +1,16 @@
-import 'dart:io';
+// lib/screens/settings/edit_profile_screen.dart
 
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../theme/theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
   static const routeName = '/settings/edit-profile';
-
   const EditProfileScreen({Key? key}) : super(key: key);
 
   @override
@@ -33,7 +34,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // prefill from auth & Firestore
+    // Prefill from auth & Firestore
     _nameCtrl.text = _user.displayName ?? '';
     _emailCtrl.text = _user.email ?? '';
     _firestore.collection('users').doc(_user.uid).get().then((snap) {
@@ -47,38 +48,55 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickAvatar() async {
-    final file = await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
     if (file != null) setState(() => _pickedImage = file);
   }
 
   Future<void> _saveProfile() async {
     setState(() => _loading = true);
     try {
-      // 1) Upload avatar to Storage & get URL (omitted here)
-      //    final photoURL = await uploadToStorage(_pickedImage);
+      String? photoURL;
 
-      final updates = <String, dynamic>{};
+      // 1) Upload avatar to Storage & get URL
       if (_pickedImage != null) {
-        // Example: upload logic replaced by local file path for demo
-        final photoURL = _pickedImage!.path;
-        updates['photoURL'] = photoURL;
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('user_avatars/${_user.uid}.jpg');
+
+        if (kIsWeb) {
+          final bytes = await _pickedImage!.readAsBytes();
+          await storageRef.putData(
+              bytes, SettableMetadata(contentType: 'image/jpeg'));
+        } else {
+          await storageRef.putFile(File(_pickedImage!.path));
+        }
+
+        photoURL = await storageRef.getDownloadURL();
+        // Update FirebaseAuth and then reload to refresh currentUser.photoURL
         await _user.updatePhotoURL(photoURL);
+        await _user.reload();
       }
 
+      // 2) Update displayName & email if changed
       if (_nameCtrl.text.trim() != _user.displayName) {
-        updates['displayName'] = _nameCtrl.text.trim();
         await _user.updateDisplayName(_nameCtrl.text.trim());
       }
       if (_emailCtrl.text.trim() != _user.email) {
         await _user.updateEmail(_emailCtrl.text.trim());
       }
 
-      // 2) Firestore update:
-      await _firestore.collection('users').doc(_user.uid).set({
+      // 3) Firestore update (bio, university, year, photoURL if any)
+      final data = {
         'bio': _bioCtrl.text.trim(),
         'university': _univCtrl.text.trim(),
         'year': _year,
-      }, SetOptions(merge: true));
+      };
+      if (photoURL != null) data['photoURL'] = photoURL;
+
+      await _firestore
+          .collection('users')
+          .doc(_user.uid)
+          .set(data, SetOptions(merge: true));
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated')),
@@ -115,14 +133,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
-                  // Avatar
+                  // Avatar picker
                   Center(
                     child: Stack(
                       children: [
                         CircleAvatar(
                           radius: 50,
                           backgroundImage: _pickedImage != null
-                              ? FileImage(File(_pickedImage!.path))
+                              ? (kIsWeb
+                                      ? NetworkImage(_pickedImage!.path)
+                                      : FileImage(File(_pickedImage!.path)))
+                                  as ImageProvider
                               : (_user.photoURL != null
                                   ? NetworkImage(_user.photoURL!)
                                   : const AssetImage(

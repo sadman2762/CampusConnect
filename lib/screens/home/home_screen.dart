@@ -1,3 +1,5 @@
+// lib/screens/home/home_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -25,9 +27,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String? userEmail;
-  String? username;
-
   static const List<Map<String, String>> _features = [
     {
       'title': 'Courses',
@@ -56,17 +55,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'image': 'assets/images/queries.jpg',
     },
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    final user = FirebaseAuth.instance.currentUser;
-    final email = user?.email;
-    setState(() {
-      userEmail = email;
-      username = email?.split('@').first;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,36 +110,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         switch (f['title']) {
                           case 'Courses':
                             Navigator.pushNamed(
-                              context,
-                              CoursesScreen.routeName,
-                            );
+                                context, CoursesScreen.routeName);
                             break;
                           case 'Student Feed':
                             Navigator.pushNamed(
-                              context,
-                              StudentFeedScreen.routeName,
-                            );
+                                context, StudentFeedScreen.routeName);
                             break;
                           case 'Group Discussions':
                             Navigator.pushNamed(
-                              context,
-                              GroupDiscussionsScreen.routeName,
-                            );
+                                context, GroupDiscussionsScreen.routeName);
                             break;
                           case 'One-to-one Guidance':
                             Navigator.pushNamed(
-                              context,
-                              GuidanceScreen.routeName,
-                            );
+                                context, GuidanceScreen.routeName);
                             break;
                           case 'Queries Section':
                             Navigator.pushNamed(
-                              context,
-                              QueriesScreen.routeName,
-                            );
-                            break;
-                          default:
-                            // no-op
+                                context, QueriesScreen.routeName);
                             break;
                         }
                       },
@@ -186,6 +161,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSideDrawer(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName =
+        user?.displayName ?? user?.email?.split('@').first ?? 'User';
+    final email = user?.email ?? '';
+    final photoUrl = user?.photoURL;
+
     return Drawer(
       child: Column(
         children: [
@@ -193,9 +174,12 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(color: Colors.blue.shade100),
             child: Row(
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 32,
-                  backgroundImage: AssetImage('assets/images/profiles.jpg'),
+                  backgroundImage: photoUrl != null
+                      ? NetworkImage(photoUrl)
+                      : const AssetImage('assets/images/profiles.jpg')
+                          as ImageProvider,
                 ),
                 const SizedBox(width: 16),
                 Flexible(
@@ -204,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        username ?? 'Loading...',
+                        displayName,
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -214,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        userEmail ?? '',
+                        email,
                         style: const TextStyle(
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -259,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const SettingsScreen(),
+                builder: (ctx) => const SettingsScreen(),
               ),
             );
           }),
