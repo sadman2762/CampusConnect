@@ -1,3 +1,5 @@
+// lib/screens/guidance/guidance_screen.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +20,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late TabController _tabController;
   String? currentUserId;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -32,7 +35,13 @@ class _GuidanceScreenState extends State<GuidanceScreen>
   Stream<List<QueryDocumentSnapshot>> _getRegisteredUsers() {
     return FirebaseFirestore.instance.collection('users').snapshots().map(
       (snapshot) {
-        return snapshot.docs.where((doc) => doc.id != currentUserId).toList();
+        return snapshot.docs
+            .where((doc) => doc.id != currentUserId)
+            .where((doc) {
+          final email = doc['email'] ?? '';
+          final name = email.split('@')[0];
+          return name.toLowerCase().contains(_searchQuery.toLowerCase());
+        }).toList();
       },
     );
   }
@@ -140,6 +149,11 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                     borderSide: BorderSide.none,
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
               ),
             ),
             const SizedBox(height: 16),
