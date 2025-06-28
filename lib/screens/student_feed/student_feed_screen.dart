@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../widgets/custom_bottom_nav.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
@@ -20,6 +22,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _statusController = TextEditingController();
 
+  // Your static avatar‐preview list
   static const List<Map<String, String>> _students = [
     {
       'name': 'Piroska Peter',
@@ -58,24 +61,38 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
     },
   ];
 
-  // Firestore collection for feed posts
   CollectionReference<Map<String, dynamic>> get _feedCol =>
       FirebaseFirestore.instance.collection('feed');
 
-  // Live stream of posts ordered by newest first
   Stream<QuerySnapshot<Map<String, dynamic>>> get _feedStream =>
       _feedCol.orderBy('timestamp', descending: true).snapshots();
 
-  /// Post a new status to Firestore
   Future<void> _postStatus() async {
     final content = _statusController.text.trim();
     if (content.isEmpty) return;
 
-    // Hardcode as Piroska Peter for now
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Try Firestore student profile first
+    final doc = await FirebaseFirestore.instance
+        .collection('students')
+        .doc(user.uid)
+        .get();
+    final data = doc.data() ?? {};
+
+    // Fallback to Auth displayName / photoURL
+    final name = (data['name'] as String?)?.isNotEmpty == true
+        ? data['name'] as String
+        : (user.displayName ?? 'No Name');
+    final avatar = (data['avatar'] as String?)?.isNotEmpty == true
+        ? data['avatar'] as String
+        : (user.photoURL ?? '');
+
     await _feedCol.add({
-      'studentId': 'uid_001',
-      'name': 'Piroska Peter',
-      'avatar': 'assets/images/student1.jpg',
+      'studentId': user.uid,
+      'name': name,
+      'avatar': avatar,
       'content': content,
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -113,7 +130,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                               title: Text('Piroska Peter'),
                               subtitle: Text('200 m away'),
                             ),
-                            // ...
                           ],
                         ),
                       ),
@@ -126,8 +142,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                   ),
                 ),
               ),
-              // map view omitted for brevity
-              Expanded(child: Container()),
+              Expanded(child: Container()), // placeholder for map
             ],
           ),
         );
@@ -167,7 +182,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                     context, ProfileScreen.routeName);
               },
             ),
-            // ...
           ],
         ),
       ),
@@ -185,7 +199,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 ),
               ),
               SizedBox(height: 12),
-              // ...
             ],
           ),
         ),
@@ -202,9 +215,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.home_outlined),
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, HomeScreen.routeName);
-                },
+                onPressed: () => Navigator.pushReplacementNamed(
+                    context, HomeScreen.routeName),
               ),
               IconButton(
                 icon: const Icon(Icons.map_outlined),
@@ -217,10 +229,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () {
-                  Navigator.pushReplacementNamed(
-                      context, ProfileScreen.routeName);
-                },
+                onPressed: () => Navigator.pushReplacementNamed(
+                    context, ProfileScreen.routeName),
               ),
             ],
           ),
@@ -265,9 +275,9 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              // still pass your preview list
               AvatarList(students: _students),
               const SizedBox(height: 16),
-              // Firestore-backed feed list
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _feedStream,

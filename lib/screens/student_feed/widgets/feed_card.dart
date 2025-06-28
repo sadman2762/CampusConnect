@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../profile/student_profile_screen.dart'; // Adjust path if needed
 
 class FeedCard extends StatefulWidget {
@@ -38,12 +39,36 @@ class _FeedCardState extends State<FeedCard> {
   Future<void> _postComment() async {
     final text = _commentController.text.trim();
     if (text.isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // Optionally show a login prompt or error
+      return;
+    }
+
+    // Try Firestore students collection first
+    final userDoc = await FirebaseFirestore.instance
+        .collection('students')
+        .doc(user.uid)
+        .get();
+    final profileData = userDoc.data() ?? {};
+
+    // Fallback to FirebaseAuth displayName/photoURL
+    final authorName = (profileData['name'] as String?)?.isNotEmpty == true
+        ? profileData['name'] as String
+        : (user.displayName ?? 'No Name');
+    final authorAvatar = (profileData['avatar'] as String?)?.isNotEmpty == true
+        ? profileData['avatar'] as String
+        : (user.photoURL ?? '');
+
     await _commentsCol.add({
-      'author': 'You', // replace with real user when available
-      'avatar': widget.avatarPath,
+      'authorId': user.uid,
+      'author': authorName,
+      'avatar': authorAvatar,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
     });
+
     _commentController.clear();
   }
 
@@ -77,7 +102,17 @@ class _FeedCardState extends State<FeedCard> {
               },
               child: Row(
                 children: [
-                  CircleAvatar(backgroundImage: AssetImage(widget.avatarPath)),
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundImage: widget.avatarPath.startsWith('http')
+                        ? NetworkImage(widget.avatarPath)
+                        : widget.avatarPath.isNotEmpty
+                            ? AssetImage(widget.avatarPath) as ImageProvider
+                            : null,
+                    child: widget.avatarPath.isEmpty
+                        ? const Icon(Icons.person_outline)
+                        : null,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -133,18 +168,35 @@ class _FeedCardState extends State<FeedCard> {
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (_, i) {
                         final c = docs[i].data();
+                        final avatar = (c['avatar'] as String?) ?? '';
                         return Row(
                           children: [
                             CircleAvatar(
                               radius: 12,
-                              backgroundImage:
-                                  AssetImage(c['avatar'] as String),
+                              backgroundImage: avatar.startsWith('http')
+                                  ? NetworkImage(avatar)
+                                  : avatar.isNotEmpty
+                                      ? AssetImage(avatar) as ImageProvider
+                                      : null,
+                              child: avatar.isEmpty
+                                  ? const Icon(Icons.person, size: 16)
+                                  : null,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                '${c['author']}: ${c['text']}',
-                                style: const TextStyle(fontSize: 14),
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                      fontSize: 14, color: Colors.black),
+                                  children: [
+                                    TextSpan(
+                                      text: '${c['author']}: ',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    TextSpan(text: c['text'] as String),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
