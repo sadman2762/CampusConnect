@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../profile/profile_screen.dart';
-import 'summary_screen.dart'; // <-- Required for navigation
+import 'summary_screen.dart';
 
 class GroupDiscussionsScreen extends StatefulWidget {
   final String groupName;
@@ -22,36 +22,40 @@ class GroupDiscussionsScreen extends StatefulWidget {
 class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _controller = TextEditingController();
+  final _searchController = TextEditingController();
 
   User? get _me => FirebaseAuth.instance.currentUser;
   String get _myName => _me?.email?.split('@').first ?? 'You';
-  String get _myAvatar => 'assets/images/student1.jpg';
 
-  /// Firestore collection for this group's messages
   CollectionReference<Map<String, dynamic>> get _messagesCol =>
       FirebaseFirestore.instance
           .collection('groups')
           .doc(widget.groupName)
           .collection('messages');
 
-  /// Stream of messages ordered by timestamp
   Stream<QuerySnapshot<Map<String, dynamic>>> get _messagesStream =>
       _messagesCol.orderBy('timestamp').snapshots();
 
-  /// Send a new message to Firestore
+  Future<String> _getUserAvatar(String uid) async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    return snapshot.data()?['profilePic'] ?? 'assets/images/default.jpg';
+  }
+
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _me == null) return;
+    final uid = _me!.uid;
+    final avatarUrl = await _getUserAvatar(uid);
     await _messagesCol.add({
       'author': _myName,
-      'avatar': _myAvatar,
+      'avatar': avatarUrl,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
     });
     _controller.clear();
   }
 
-  /// Fetch all messages once for summary
   Future<void> _generateSummary() async {
     final snapshot = await _messagesCol.orderBy('timestamp').get();
     final docs = snapshot.docs;
@@ -66,9 +70,29 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     );
   }
 
+  List<String> get _filteredGroups {
+    final query = _searchController.text.toLowerCase();
+    return _myGroups.where((g) => g.toLowerCase().contains(query)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRankings() async {
+    List<Map<String, dynamic>> results = [];
+    for (String group in _myGroups) {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(group)
+          .collection('messages')
+          .get();
+      results.add({'name': group, 'score': snapshot.size});
+    }
+    results.sort((a, b) => b['score'].compareTo(a['score']));
+    return results;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -94,13 +118,14 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   child: Column(
                     children: [
                       Text(
-                        widget.groupName,
+                        widget.groupName == 'Web Technologies'
+                            ? 'General Chat'
+                            : widget.groupName,
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Firestore-backed message list
                       Expanded(
                         child:
                             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -136,10 +161,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // Generate Summary
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -155,10 +177,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   child: const Text('Generate Summary'),
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // Input bar
               Row(
                 children: [
                   IconButton(
@@ -222,12 +241,48 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
               const SizedBox(width: 48),
               IconButton(
                 icon: const Icon(Icons.leaderboard_outlined),
-                onPressed: () => _showRankings(context),
+                onPressed: () async {
+                  final data = await _fetchRankings();
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (_) => SizedBox(
+                      height: 300,
+                      child: Column(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Text(
+                              'Top Group Rankings',
+                              style: TextStyle(
+                                  fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: data.length,
+                              separatorBuilder: (_, __) =>
+                                  const Divider(height: 0),
+                              itemBuilder: (_, i) => ListTile(
+                                title: Text(
+                                    data[i]['name'] == 'Web Technologies'
+                                        ? 'General Chat'
+                                        : data[i]['name']),
+                                trailing: Text('${data[i]['score']}'),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () =>
-                    Navigator.pushNamed(context, ProfileScreen.routeName),
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  ProfileScreen.routeName,
+                ),
               ),
             ],
           ),
@@ -248,6 +303,8 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'Search groups',
                   prefixIcon: const Icon(Icons.search),
@@ -262,17 +319,19 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
               const SizedBox(height: 16),
               Expanded(
                 child: ListView.builder(
-                  itemCount: _myGroups.length,
+                  itemCount: _filteredGroups.length,
                   itemBuilder: (_, i) => ListTile(
                     leading: const Icon(Icons.group),
-                    title: Text(_myGroups[i]),
+                    title: Text(_filteredGroups[i] == 'Web Technologies'
+                        ? 'General Chat'
+                        : _filteredGroups[i]),
                     onTap: () {
                       Navigator.pop(c);
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (_) => GroupDiscussionsScreen(
-                            groupName: _myGroups[i],
+                            groupName: _filteredGroups[i],
                           ),
                         ),
                       );
@@ -285,61 +344,28 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
         ),
       );
 
-  void _showRankings(BuildContext c) {
-    showModalBottomSheet(
-      context: c,
-      builder: (_) => SizedBox(
-        height: 300,
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Top Group Rankings',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: ListView.separated(
-                itemCount: _rankings.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
-                itemBuilder: (_, i) => ListTile(
-                  title: Text(_rankings[i]['name']!),
-                  trailing: Text(_rankings[i]['score']!),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // keep your existing static lists
   static const _myGroups = [
-    'Flutter Devs',
-    'Data Science Club',
-    'Robotics Team',
-    'Math Enthusiasts',
-    'History Buffs',
-    'AI Researchers',
-    'UX Designers',
-    'Mobile Ninjas',
-    'Cybersecurity',
-    'Game Dev Guild',
-  ];
-
-  static const _rankings = [
-    {'name': 'Flutter Devs', 'score': '9.8'},
-    {'name': 'AI Researchers', 'score': '9.5'},
-    {'name': 'Data Science Club', 'score': '9.3'},
-    {'name': 'Cybersecurity', 'score': '9.0'},
-    {'name': 'Robotics Team', 'score': '8.7'},
-    {'name': 'Game Dev Guild', 'score': '8.5'},
-    {'name': 'UX Designers', 'score': '8.2'},
-    {'name': 'Mobile Ninjas', 'score': '8.0'},
-    {'name': 'Math Enthusiasts', 'score': '7.8'},
-    {'name': 'History Buffs', 'score': '7.5'},
+    'Computer Aided Mathematics',
+    'Discrete Mathematics',
+    'Logic in Computer Science',
+    'Introduction to Programming',
+    'Calculus',
+    'Data Structures and Algorithms',
+    'Database Systems Lab',
+    'Database Systems',
+    'Operating Systems',
+    'Network Architectures',
+    'Applied Statistics',
+    'Introduction to Computer Science',
+    'High-Level Programming 1',
+    'Web Technologies',
+    'Applied Mathematics',
+    'Foundations of Computer Security',
+    'Foundations of AI',
+    'High-Level Programming 2',
+    'Web App Development',
+    'Software Engineering',
+    'Software Methodologies',
   ];
 }
 
@@ -355,7 +381,11 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleAvatar(backgroundImage: AssetImage(avatarPath)),
+        CircleAvatar(
+          backgroundImage: avatarPath.startsWith('http')
+              ? NetworkImage(avatarPath)
+              : AssetImage(avatarPath) as ImageProvider,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Container(
@@ -367,10 +397,8 @@ class _MessageBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  author,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
+                Text(author,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(text),
               ],

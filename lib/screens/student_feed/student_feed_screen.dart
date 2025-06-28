@@ -242,7 +242,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
               const SizedBox(height: 16),
 
               // Real avatars list (no dummies, optimized stream)
-              AvatarList(limit: 5),
+              const AvatarList(limit: 5),
               const SizedBox(height: 16),
 
               // Firestore-backed feed
