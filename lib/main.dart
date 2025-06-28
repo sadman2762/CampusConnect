@@ -14,7 +14,7 @@ import 'screens/home/home_screen.dart';
 
 // Courses
 import 'screens/courses/courses_screen.dart';
-import 'screens/courses/course_detail_screen.dart'; // 👈 Course detail
+import 'screens/courses/course_detail_screen.dart';
 
 // Student Feed
 import 'screens/student_feed/student_feed_screen.dart';
@@ -56,106 +56,120 @@ class CampusConnectApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CampusConnect',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AppTheme.themeNotifier,
+      builder: (context, currentMode, _) {
+        return MaterialApp(
+          title: 'CampusConnect',
+          debugShowCheckedModeBanner: false,
 
-      // Show login or home screen based on auth state
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (ctx, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          return snapshot.hasData ? const HomeScreen() : const LoginScreen();
-        },
-      ),
+          // **Dynamic theming**
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: currentMode,
 
-      // Static named routes (no CourseDetail here)
-      routes: {
-        // Auth
-        LoginScreen.routeName: (_) => const LoginScreen(),
-        RegisterScreen.routeName: (_) => const RegisterScreen(),
+          // Show login or home screen based on auth state
+          home: StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (ctx, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return snapshot.hasData
+                  ? const HomeScreen()
+                  : const LoginScreen();
+            },
+          ),
 
-        // Core
-        HomeScreen.routeName: (_) => const HomeScreen(),
-        CoursesScreen.routeName: (_) => const CoursesScreen(),
-        StudentFeedScreen.routeName: (_) => StudentFeedScreen(),
+          // Static named routes
+          routes: {
+            // Auth
+            LoginScreen.routeName: (_) => const LoginScreen(),
+            RegisterScreen.routeName: (_) => const RegisterScreen(),
 
-        // Discussions & Queries
-        QueriesScreen.routeName: (_) => const QueriesScreen(),
+            // Core
+            HomeScreen.routeName: (_) => const HomeScreen(),
+            CoursesScreen.routeName: (_) => const CoursesScreen(),
+            StudentFeedScreen.routeName: (_) => StudentFeedScreen(),
 
-        // Guidance & AI
-        GuidanceScreen.routeName: (_) => const GuidanceScreen(),
-        AIChatScreen.routeName: (_) => const AIChatScreen(),
+            // Discussions & Queries
+            QueriesScreen.routeName: (_) => const QueriesScreen(),
 
-        // Profile & Settings
-        ProfileScreen.routeName: (_) => const ProfileScreen(),
-        SettingsScreen.routeName: (_) => const SettingsScreen(),
-        EditProfileScreen.routeName: (_) => const EditProfileScreen(),
-        ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
-        NotificationsSettingsScreen.routeName: (_) =>
-            const NotificationsSettingsScreen(),
-        PrivacySettingsScreen.routeName: (_) => const PrivacySettingsScreen(),
-        ThemeSettingsScreen.routeName: (_) => const ThemeSettingsScreen(),
+            // Guidance & AI
+            GuidanceScreen.routeName: (_) => const GuidanceScreen(),
+            AIChatScreen.routeName: (_) => const AIChatScreen(),
 
-        // Help
-        HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
-      },
+            // Profile & Settings
+            ProfileScreen.routeName: (_) => const ProfileScreen(),
+            SettingsScreen.routeName: (_) => const SettingsScreen(),
+            EditProfileScreen.routeName: (_) => const EditProfileScreen(),
+            ChangePasswordScreen.routeName: (_) => const ChangePasswordScreen(),
+            NotificationsSettingsScreen.routeName: (_) =>
+                const NotificationsSettingsScreen(),
+            PrivacySettingsScreen.routeName: (_) =>
+                const PrivacySettingsScreen(),
+            ThemeSettingsScreen.routeName: (_) => const ThemeSettingsScreen(),
 
-      // Dynamic / argument‐based routes
-      onGenerateRoute: (settings) {
-        switch (settings.name) {
-          // 1) Course detail
-          case CourseDetailScreen.routeName:
-            final args = settings.arguments as Map<String, dynamic>? ?? {};
-            return MaterialPageRoute(
-              builder: (_) => CourseDetailScreen(
-                courseTitle: args['courseTitle'] as String? ?? 'Unknown Course',
-              ),
-            );
+            // Help
+            HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
+          },
 
-          // 2) Group discussions with dynamic groupName
-          case GroupDiscussionsScreen.routeName:
-            final gdArgs = settings.arguments as Map<String, dynamic>? ?? {};
-            return MaterialPageRoute(
-              builder: (_) => GroupDiscussionsScreen(
-                groupName: gdArgs['groupName'] as String? ?? 'CS23 Webtech',
-              ),
-            );
+          // Dynamic / argument‐based routes
+          onGenerateRoute: (settings) {
+            switch (settings.name) {
+              // Course detail
+              case CourseDetailScreen.routeName:
+                final args = settings.arguments as Map<String, dynamic>? ?? {};
+                return MaterialPageRoute(
+                  builder: (_) => CourseDetailScreen(
+                    courseTitle:
+                        args['courseTitle'] as String? ?? 'Unknown Course',
+                  ),
+                );
 
-          // 3) Guidance chat with peerId & peerName
-          case '/guidance_chat':
-            final chatArgs = settings.arguments as Map<String, dynamic>? ?? {};
-            return MaterialPageRoute(
-              builder: (_) => GuidanceChatScreen(
-                peerId: chatArgs['peerId'],
-                peerName: chatArgs['peerName'],
-              ),
-            );
+              // Group discussions
+              case GroupDiscussionsScreen.routeName:
+                final gdArgs =
+                    settings.arguments as Map<String, dynamic>? ?? {};
+                return MaterialPageRoute(
+                  builder: (_) => GroupDiscussionsScreen(
+                    groupName: gdArgs['groupName'] as String? ?? 'CS23 Webtech',
+                  ),
+                );
 
-          default:
-            // Fall back to `routes` table if no match
-            return null;
-        }
-      },
+              // Guidance chat
+              case '/guidance_chat':
+                final chatArgs =
+                    settings.arguments as Map<String, dynamic>? ?? {};
+                return MaterialPageRoute(
+                  builder: (_) => GuidanceChatScreen(
+                    peerId: chatArgs['peerId'],
+                    peerName: chatArgs['peerName'],
+                  ),
+                );
 
-      // Global error handler
-      builder: (ctx, child) {
-        ErrorWidget.builder = (FlutterErrorDetails details) {
-          return Scaffold(
-            body: Center(
-              child: Text(
-                'Something went wrong!\n${details.exceptionAsString()}',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        };
-        return child ?? const SizedBox.shrink();
+              default:
+                return null; // fall back to routes table
+            }
+          },
+
+          // Global error handler
+          builder: (ctx, child) {
+            ErrorWidget.builder = (FlutterErrorDetails details) {
+              return Scaffold(
+                body: Center(
+                  child: Text(
+                    'Something went wrong!\n${details.exceptionAsString()}',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            };
+            return child ?? const SizedBox.shrink();
+          },
+        );
       },
     );
   }
