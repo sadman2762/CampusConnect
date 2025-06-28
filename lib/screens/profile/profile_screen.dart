@@ -1,5 +1,7 @@
+// lib/screens/profile/profile_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
 import '../home/home_screen.dart';
@@ -11,6 +13,11 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final name = user?.displayName ?? 'Your Name';
+    final email = user?.email ?? 'you@example.com';
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -18,15 +25,19 @@ class ProfileScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
+          color: AppColors.primary, // arrow colour
           onPressed: () {
-            Navigator.pushReplacementNamed(context, HomeScreen.routeName);
+            Navigator.pushReplacementNamed(
+              context,
+              HomeScreen.routeName,
+            );
           },
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Gradient Header
+            // Gradient Header with dynamic avatar, name & email
             Container(
               width: double.infinity,
               padding: const EdgeInsets.only(bottom: 16),
@@ -43,28 +54,24 @@ class ProfileScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 50,
-                    backgroundImage: AssetImage('assets/images/profile.jpg'),
+                    backgroundImage: photoUrl != null
+                        ? NetworkImage(photoUrl)
+                        : const AssetImage('assets/images/profile.jpg')
+                            as ImageProvider,
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    "Samantha Jones",
+                    name,
                     style: Theme.of(context)
                         .textTheme
                         .headlineSmall
                         ?.copyWith(color: Colors.white),
                   ),
-                  Text(
-                    "@sam_jones_01",
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.white70),
-                  ),
                   const SizedBox(height: 4),
                   Text(
-                    "New York, United States",
+                    email,
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
@@ -76,7 +83,7 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Job Title and Institution
+            // Job Title and Institution (unchanged)
             Text(
               "Web Producer - Web Specialist",
               style: Theme.of(context).textTheme.bodyMedium,
@@ -88,7 +95,7 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Buttons
+            // Connect & Message buttons
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40.0),
               child: Row(
@@ -96,7 +103,7 @@ class ProfileScreen extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        // Connect button logic
+                        // Connect logic
                       },
                       icon: const Icon(Icons.person_add_alt_1),
                       label: const Text("Connect"),
@@ -106,7 +113,10 @@ class ProfileScreen extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.pushNamed(context, GuidanceScreen.routeName);
+                        Navigator.pushNamed(
+                          context,
+                          GuidanceScreen.routeName,
+                        );
                       },
                       icon: const Icon(Icons.message),
                       label: const Text("Private Message"),
@@ -122,58 +132,17 @@ class ProfileScreen extends StatelessWidget {
 
             const SizedBox(height: 24),
 
-            // Stats Row
+            // Stats Row: Friends, Rank, Comments
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   _StatCard(label: "Friends", value: "65"),
-                  _StatCard(label: "Photos", value: "43"),
+                  _StatCard(label: "Rank", value: "12"),
                   _StatCard(label: "Comments", value: "21"),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Social Media Icons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.linkedin),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.twitter),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.instagram),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: const FaIcon(FontAwesomeIcons.github),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Show More
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-              ),
-              child: const Text("Show more"),
             ),
 
             const SizedBox(height: 36),
@@ -195,7 +164,10 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatCard({required this.label, required this.value});
+  const _StatCard({
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
