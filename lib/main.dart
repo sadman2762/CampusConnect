@@ -1,3 +1,5 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +20,7 @@ import 'screens/courses/course_detail_screen.dart';
 
 // Student Feed
 import 'screens/student_feed/student_feed_screen.dart';
+import 'screens/profile/student_profile_screen.dart';
 
 // Discussions & Queries
 import 'screens/discussions/group_discussions_screen.dart';
@@ -52,7 +55,7 @@ void main() async {
 }
 
 class CampusConnectApp extends StatelessWidget {
-  const CampusConnectApp({super.key});
+  const CampusConnectApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +66,7 @@ class CampusConnectApp extends StatelessWidget {
           title: 'CampusConnect',
           debugShowCheckedModeBanner: false,
 
-          // **Dynamic theming**
+          // Dynamic theming
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentMode,
@@ -83,25 +86,16 @@ class CampusConnectApp extends StatelessWidget {
             },
           ),
 
-          // Static named routes
+          // Static named routes (no args)
           routes: {
-            // Auth
             LoginScreen.routeName: (_) => const LoginScreen(),
             RegisterScreen.routeName: (_) => const RegisterScreen(),
-
-            // Core
             HomeScreen.routeName: (_) => const HomeScreen(),
             CoursesScreen.routeName: (_) => const CoursesScreen(),
-            StudentFeedScreen.routeName: (_) => StudentFeedScreen(),
-
-            // Discussions & Queries
+            StudentFeedScreen.routeName: (_) => const StudentFeedScreen(),
             QueriesScreen.routeName: (_) => const QueriesScreen(),
-
-            // Guidance & AI
             GuidanceScreen.routeName: (_) => const GuidanceScreen(),
             AIChatScreen.routeName: (_) => const AIChatScreen(),
-
-            // Profile & Settings
             ProfileScreen.routeName: (_) => const ProfileScreen(),
             SettingsScreen.routeName: (_) => const SettingsScreen(),
             EditProfileScreen.routeName: (_) => const EditProfileScreen(),
@@ -111,15 +105,12 @@ class CampusConnectApp extends StatelessWidget {
             PrivacySettingsScreen.routeName: (_) =>
                 const PrivacySettingsScreen(),
             ThemeSettingsScreen.routeName: (_) => const ThemeSettingsScreen(),
-
-            // Help
             HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
           },
 
-          // Dynamic / argument‐based routes
+          // Dynamic / argument-based routes
           onGenerateRoute: (settings) {
             switch (settings.name) {
-              // Course detail
               case CourseDetailScreen.routeName:
                 final args = settings.arguments as Map<String, dynamic>? ?? {};
                 return MaterialPageRoute(
@@ -129,7 +120,6 @@ class CampusConnectApp extends StatelessWidget {
                   ),
                 );
 
-              // Group discussions
               case GroupDiscussionsScreen.routeName:
                 final gdArgs =
                     settings.arguments as Map<String, dynamic>? ?? {};
@@ -139,19 +129,24 @@ class CampusConnectApp extends StatelessWidget {
                   ),
                 );
 
-              // Guidance chat
-              case '/guidance_chat':
+              case GuidanceChatScreen.routeName:
                 final chatArgs =
                     settings.arguments as Map<String, dynamic>? ?? {};
                 return MaterialPageRoute(
                   builder: (_) => GuidanceChatScreen(
-                    peerId: chatArgs['peerId'],
-                    peerName: chatArgs['peerName'],
+                    peerId: chatArgs['peerId'] as String,
+                    peerName: chatArgs['peerName'] as String,
                   ),
                 );
 
+              case StudentProfileScreen.routeName:
+                final sid = settings.arguments as String;
+                return MaterialPageRoute(
+                  builder: (_) => StudentProfileScreen(studentId: sid),
+                );
+
               default:
-                return null; // fall back to routes table
+                return null;
             }
           },
 

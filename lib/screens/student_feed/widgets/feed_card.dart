@@ -1,3 +1,5 @@
+// lib/screens/student_feed/widgets/feed_card.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,7 +27,7 @@ class FeedCard extends StatefulWidget {
 
 class _FeedCardState extends State<FeedCard> {
   bool _showComments = false;
-  final _commentController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
 
   CollectionReference<Map<String, dynamic>> get _commentsCol =>
       FirebaseFirestore.instance
@@ -41,19 +43,14 @@ class _FeedCardState extends State<FeedCard> {
     if (text.isEmpty) return;
 
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      // Optionally show a login prompt or error
-      return;
-    }
+    if (user == null) return;
 
-    // Try Firestore students collection first
     final userDoc = await FirebaseFirestore.instance
         .collection('students')
         .doc(user.uid)
         .get();
     final profileData = userDoc.data() ?? {};
 
-    // Fallback to FirebaseAuth displayName/photoURL
     final authorName = (profileData['name'] as String?)?.isNotEmpty == true
         ? profileData['name'] as String
         : (user.displayName ?? 'No Name');
@@ -78,10 +75,22 @@ class _FeedCardState extends State<FeedCard> {
     super.dispose();
   }
 
+  ImageProvider _imageProvider(String path) {
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
+    } else if (path.isNotEmpty) {
+      return AssetImage(path);
+    } else {
+      return const AssetImage('assets/images/default_avatar.jpg');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -91,27 +100,17 @@ class _FeedCardState extends State<FeedCard> {
             InkWell(
               borderRadius: BorderRadius.circular(32),
               onTap: () {
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => StudentProfileScreen(
-                      studentId: widget.studentId,
-                    ),
-                  ),
+                  StudentProfileScreen.routeName,
+                  arguments: widget.studentId,
                 );
               },
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: widget.avatarPath.startsWith('http')
-                        ? NetworkImage(widget.avatarPath)
-                        : widget.avatarPath.isNotEmpty
-                            ? AssetImage(widget.avatarPath) as ImageProvider
-                            : null,
-                    child: widget.avatarPath.isEmpty
-                        ? const Icon(Icons.person_outline)
-                        : null,
+                    backgroundImage: _imageProvider(widget.avatarPath),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -131,10 +130,11 @@ class _FeedCardState extends State<FeedCard> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(widget.content, style: const TextStyle(fontSize: 14)),
+            Text(
+              widget.content,
+              style: const TextStyle(fontSize: 14),
+            ),
             const SizedBox(height: 12),
-
-            // Comments toggle button with count
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _commentsStream,
               builder: (ctx, snap) {
@@ -147,8 +147,6 @@ class _FeedCardState extends State<FeedCard> {
                 );
               },
             ),
-
-            // Expandable comment section
             if (_showComments) ...[
               const Divider(),
               SizedBox(
@@ -173,14 +171,7 @@ class _FeedCardState extends State<FeedCard> {
                           children: [
                             CircleAvatar(
                               radius: 12,
-                              backgroundImage: avatar.startsWith('http')
-                                  ? NetworkImage(avatar)
-                                  : avatar.isNotEmpty
-                                      ? AssetImage(avatar) as ImageProvider
-                                      : null,
-                              child: avatar.isEmpty
-                                  ? const Icon(Icons.person, size: 16)
-                                  : null,
+                              backgroundImage: _imageProvider(avatar),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -190,7 +181,7 @@ class _FeedCardState extends State<FeedCard> {
                                       fontSize: 14, color: Colors.black),
                                   children: [
                                     TextSpan(
-                                      text: '${c['author']}: ',
+                                      text: "${c['author']}: ",
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold),
                                     ),

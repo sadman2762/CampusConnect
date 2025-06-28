@@ -1,3 +1,5 @@
+// lib/screens/student_feed/student_feed_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -19,47 +21,8 @@ class StudentFeedScreen extends StatefulWidget {
 }
 
 class _StudentFeedScreenState extends State<StudentFeedScreen> {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final TextEditingController _statusController = TextEditingController();
-
-  // Your static avatar‐preview list
-  static const List<Map<String, String>> _students = [
-    {
-      'name': 'Piroska Peter',
-      'avatar': 'assets/images/student1.jpg',
-      'studentId': 'uid_001'
-    },
-    {
-      'name': 'Anna Janos',
-      'avatar': 'assets/images/student2.jpg',
-      'studentId': 'uid_002'
-    },
-    {
-      'name': 'Liu Wei',
-      'avatar': 'assets/images/student3.jpg',
-      'studentId': 'uid_003'
-    },
-    {
-      'name': 'Sara Müller',
-      'avatar': 'assets/images/student4.jpg',
-      'studentId': 'uid_004'
-    },
-    {
-      'name': 'Omar Ali',
-      'avatar': 'assets/images/student5.jpg',
-      'studentId': 'uid_005'
-    },
-    {
-      'name': 'Noah Smith',
-      'avatar': 'assets/images/student6.jpg',
-      'studentId': 'uid_006'
-    },
-    {
-      'name': 'Emma Brown',
-      'avatar': 'assets/images/student7.jpg',
-      'studentId': 'uid_007'
-    },
-  ];
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _statusController = TextEditingController();
 
   CollectionReference<Map<String, dynamic>> get _feedCol =>
       FirebaseFirestore.instance.collection('feed');
@@ -74,14 +37,11 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Try Firestore student profile first
     final doc = await FirebaseFirestore.instance
         .collection('students')
         .doc(user.uid)
         .get();
     final data = doc.data() ?? {};
-
-    // Fallback to Auth displayName / photoURL
     final name = (data['name'] as String?)?.isNotEmpty == true
         ? data['name'] as String
         : (user.displayName ?? 'No Name');
@@ -106,47 +66,33 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
     super.dispose();
   }
 
-  void _showNearbyFriends(BuildContext context) {
+  void _showNearbyFriends() {
     showModalBottomSheet(
       context: context,
-      builder: (_) {
-        return SizedBox(
-          height: MediaQuery.of(context).size.height * 0.5,
-          child: Row(
-            children: [
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: ListView(
-                          children: const [
-                            ListTile(
-                              leading: CircleAvatar(
-                                backgroundImage:
-                                    AssetImage('assets/images/student2.jpg'),
-                              ),
-                              title: Text('Piroska Peter'),
-                              subtitle: Text('200 m away'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {},
-                        child: const Text('Physical Meet Request'),
-                      ),
-                    ],
-                  ),
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * .5,
+        child: Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const Expanded(
+                      child: Center(child: Text('Nearby friends map…')),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {},
+                      child: const Text('Physical Meet Request'),
+                    ),
+                  ],
                 ),
               ),
-              Expanded(child: Container()), // placeholder for map
-            ],
-          ),
-        );
-      },
+            ),
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+      ),
     );
   }
 
@@ -166,7 +112,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 children: const [
                   CircleAvatar(
                     radius: 32,
-                    backgroundImage: AssetImage('assets/images/student1.jpg'),
+                    backgroundImage:
+                        AssetImage('assets/images/default_avatar.jpg'),
                   ),
                   SizedBox(width: 16),
                   Text('John Doe\njohndoe@example.com'),
@@ -178,8 +125,17 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
               title: const Text('My Profile'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushReplacementNamed(
-                    context, ProfileScreen.routeName);
+                final me = FirebaseAuth.instance.currentUser?.uid;
+                if (me != null) {
+                  Navigator.pushNamed(
+                    context,
+                    StudentProfileScreen.routeName,
+                    arguments: me,
+                  );
+                } else {
+                  Navigator.pushReplacementNamed(
+                      context, ProfileScreen.routeName);
+                }
               },
             ),
           ],
@@ -198,7 +154,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
-              SizedBox(height: 12),
             ],
           ),
         ),
@@ -220,7 +175,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.map_outlined),
-                onPressed: () => _showNearbyFriends(context),
+                onPressed: _showNearbyFriends,
               ),
               const SizedBox(width: 48),
               IconButton(
@@ -229,8 +184,19 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () => Navigator.pushReplacementNamed(
-                    context, ProfileScreen.routeName),
+                onPressed: () {
+                  final me = FirebaseAuth.instance.currentUser?.uid;
+                  if (me != null) {
+                    Navigator.pushNamed(
+                      context,
+                      StudentProfileScreen.routeName,
+                      arguments: me,
+                    );
+                  } else {
+                    Navigator.pushReplacementNamed(
+                        context, ProfileScreen.routeName);
+                  }
+                },
               ),
             ],
           ),
@@ -247,7 +213,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                   'Student Feed',
                   style: textTheme.headlineSmall
                       ?.copyWith(fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 16),
@@ -271,13 +236,16 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                   ElevatedButton(
                     onPressed: _postStatus,
                     child: const Icon(Icons.send),
-                  )
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
-              // still pass your preview list
-              AvatarList(students: _students),
+
+              // Real avatars list (no dummies, optimized stream)
+              AvatarList(limit: 5),
               const SizedBox(height: 16),
+
+              // Firestore-backed feed
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _feedStream,
@@ -290,6 +258,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                       return const Center(child: Text('No posts yet.'));
                     }
                     return ListView.separated(
+                      physics: const BouncingScrollPhysics(),
                       itemCount: docs.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 16),
                       itemBuilder: (ctx, i) {
@@ -297,8 +266,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                         final data = doc.data();
                         return FeedCard(
                           postId: doc.id,
-                          name: data['name'] as String,
                           studentId: data['studentId'] as String,
+                          name: data['name'] as String,
                           avatarPath: data['avatar'] as String,
                           content: data['content'] as String,
                         );

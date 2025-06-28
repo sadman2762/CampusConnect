@@ -13,6 +13,7 @@ class GuidanceChatScreen extends StatefulWidget {
   final String peerId;
   final String peerName;
   final String? peerAvatar;
+  static const routeName = '/guidance_chat';
 
   const GuidanceChatScreen({
     Key? key,
