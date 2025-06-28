@@ -2,15 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../courses/courses_screen.dart';
-import '../student_feed/student_feed_screen.dart';
-import '../discussions/group_discussions_screen.dart';
-import '../guidance/guidance_screen.dart';
 import '../ai_chat/ai_chat_screen.dart';
 import '../profile/profile_screen.dart';
-import '../settings/settings_screen.dart';
-import '../help/help_center_screen.dart';
-
 import 'widgets/query_card.dart';
 
 class QueriesScreen extends StatefulWidget {
@@ -46,7 +39,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
         : col.snapshots();
   }
 
-  /// Post new query (now includes initial likes = 0)
   Future<void> _postNewQuery() async {
     final text = _newQueryController.text.trim();
     if (text.isEmpty || _me == null) return;
@@ -61,6 +53,24 @@ class _QueriesScreenState extends State<QueriesScreen> {
     _newQueryController.clear();
   }
 
+  /// Handles the like logic ensuring one like per user
+  Future<void> _handleLike(String queryId) async {
+    final likeRef = FirebaseFirestore.instance
+        .collection('queries')
+        .doc(queryId)
+        .collection('likes')
+        .doc(_myUid);
+
+    final alreadyLiked = await likeRef.get();
+    if (alreadyLiked.exists) return;
+
+    await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
+    await FirebaseFirestore.instance
+        .collection('queries')
+        .doc(queryId)
+        .update({'likes': FieldValue.increment(1)});
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -73,14 +83,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            Text(
-              'Queries Section',
-              style: textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
+            Text('Queries Section',
+                style: textTheme.headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-
-            // Post-a-query input bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: TextField(
@@ -101,9 +107,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 onSubmitted: (_) => _postNewQuery(),
               ),
             ),
-
             const SizedBox(height: 16),
-            // Toggle All vs. My
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -121,8 +125,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // Live list
             Expanded(
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _queryStream,
@@ -158,14 +160,11 @@ class _QueriesScreenState extends State<QueriesScreen> {
       floatingActionButton: FloatingActionButton(
         elevation: 6,
         backgroundColor: Colors.white,
-        child: const Text(
-          '4TY',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        child: const Text('4TY',
+            style: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
         onPressed: () => Navigator.pushNamed(context, AIChatScreen.routeName),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -182,10 +181,8 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               IconButton(
-                icon: Icon(
-                  Icons.list_alt,
-                  color: _viewMy == 1 ? theme.primaryColor : Colors.black54,
-                ),
+                icon: Icon(Icons.list_alt,
+                    color: _viewMy == 1 ? theme.primaryColor : Colors.black54),
                 onPressed: () => setState(() => _viewMy = 1),
               ),
               const SizedBox(width: 48),
@@ -211,10 +208,8 @@ class _QueriesScreenState extends State<QueriesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Top Queries',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              const Text('Top Queries',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(

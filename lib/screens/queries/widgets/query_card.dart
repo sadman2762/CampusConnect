@@ -23,32 +23,87 @@ class QueryCard extends StatefulWidget {
 class _QueryCardState extends State<QueryCard> {
   final _answerController = TextEditingController();
   bool _showAnswers = false;
+  bool _alreadyLiked = false;
+  int _likes = 0;
 
   User? get _me => FirebaseAuth.instance.currentUser;
+  String get _myUid => _me?.uid ?? '';
   String get _myName => _me?.email?.split('@').first ?? 'Anonymous';
 
-  /// Increment likes
-  Future<void> _toggleLike(int currentLikes) async {
+  /// Check if user already liked this query
+  Future<void> _checkIfLiked() async {
+    if (_myUid.isEmpty) return;
+
+    final likeDoc = await FirebaseFirestore.instance
+        .collection('queries')
+        .doc(widget.queryId)
+        .collection('likes')
+        .doc(_myUid)
+        .get();
+
+    setState(() {
+      _alreadyLiked = likeDoc.exists;
+    });
+  }
+
+  /// Get current like count
+  Future<void> _fetchLikes() async {
+    final doc = await FirebaseFirestore.instance
+        .collection('queries')
+        .doc(widget.queryId)
+        .get();
+
+    if (doc.exists) {
+      setState(() {
+        _likes = doc.data()?['likes'] ?? 0;
+      });
+    }
+  }
+
+  /// Like button logic
+  Future<void> _toggleLike() async {
+    if (_alreadyLiked || _myUid.isEmpty) return;
+
+    final queryRef =
+        FirebaseFirestore.instance.collection('queries').doc(widget.queryId);
+    final likeRef = queryRef.collection('likes').doc(_myUid);
+
+    await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final freshSnap = await transaction.get(queryRef);
+      final currentLikes = freshSnap['likes'] ?? 0;
+      transaction.update(queryRef, {'likes': currentLikes + 1});
+      transaction.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
+    });
+
+    setState(() {
+      _alreadyLiked = true;
+      _likes += 1;
+    });
+  }
+
+  /// Answer post logic
+  Future<void> _postAnswer() async {
+    final text = _answerController.text.trim();
+    if (text.isEmpty || _myUid.isEmpty) return;
+
     await FirebaseFirestore.instance
         .collection('queries')
         .doc(widget.queryId)
-        .update({'likes': currentLikes + 1});
-  }
-
-  /// Post an answer
-  Future<void> _postAnswer() async {
-    final text = _answerController.text.trim();
-    if (text.isEmpty) return;
-    final answersCol = FirebaseFirestore.instance
-        .collection('queries')
-        .doc(widget.queryId)
-        .collection('answers');
-    await answersCol.add({
+        .collection('answers')
+        .add({
       'author': _myName,
       'text': text,
       'timestamp': FieldValue.serverTimestamp(),
     });
+
     _answerController.clear();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfLiked();
+    _fetchLikes();
   }
 
   @override
@@ -59,11 +114,6 @@ class _QueryCardState extends State<QueryCard> {
 
   @override
   Widget build(BuildContext context) {
-    final queryDocStream = FirebaseFirestore.instance
-        .collection('queries')
-        .doc(widget.queryId)
-        .snapshots();
-
     final answersStream = FirebaseFirestore.instance
         .collection('queries')
         .doc(widget.queryId)
@@ -110,31 +160,28 @@ class _QueryCardState extends State<QueryCard> {
           ),
           const SizedBox(height: 12),
 
-          // Likes & Answers buttons
-          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-            stream: queryDocStream,
-            builder: (ctx, snap) {
-              final likes = (snap.data?.data()?['likes'] as int?) ?? 0;
-              return Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.thumb_up_alt_outlined),
-                    onPressed: () => _toggleLike(likes),
-                  ),
-                  Text('$likes'),
-                  const SizedBox(width: 24),
-                  TextButton.icon(
-                    onPressed: () =>
-                        setState(() => _showAnswers = !_showAnswers),
-                    icon: const Icon(Icons.chat_bubble_outline, size: 20),
-                    label: Text(_showAnswers ? 'Hide Answers' : 'Answers'),
-                  ),
-                ],
-              );
-            },
+          // Like + Answers UI
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  _alreadyLiked
+                      ? Icons.thumb_up_alt
+                      : Icons.thumb_up_alt_outlined,
+                  color: _alreadyLiked ? Colors.blue : null,
+                ),
+                onPressed: _alreadyLiked ? null : _toggleLike,
+              ),
+              Text('$_likes'),
+              const SizedBox(width: 24),
+              TextButton.icon(
+                onPressed: () => setState(() => _showAnswers = !_showAnswers),
+                icon: const Icon(Icons.chat_bubble_outline, size: 20),
+                label: Text(_showAnswers ? 'Hide Answers' : 'Answers'),
+              ),
+            ],
           ),
 
-          // Expandable answers section
           if (_showAnswers) ...[
             const Divider(),
             SizedBox(
