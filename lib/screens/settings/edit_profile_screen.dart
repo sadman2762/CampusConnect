@@ -80,19 +80,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _user = FirebaseAuth.instance.currentUser!;
       }
 
-      if (_nameCtrl.text.trim() != _user.displayName) {
-        await _user.updateDisplayName(_nameCtrl.text.trim());
+      final newName = _nameCtrl.text.trim();
+      if (newName != _user.displayName) {
+        await _user.updateDisplayName(newName);
       }
       if (_emailCtrl.text.trim() != _user.email) {
         await _user.updateEmail(_emailCtrl.text.trim());
       }
 
       final data = {
+        'name': newName, // ✅ FIX: update Firestore `name`
         'bio': _bioCtrl.text.trim(),
         'university': _univCtrl.text.trim(),
         'year': _year,
       };
-      if (photoURL != null) data['profilePic'] = photoURL; // ✅ fixed key
+      if (photoURL != null) data['profilePic'] = photoURL;
 
       await _firestore
           .collection('users')
