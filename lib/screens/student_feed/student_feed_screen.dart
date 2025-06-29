@@ -8,7 +8,6 @@ import '../../widgets/custom_bottom_nav.dart';
 import '../home/home_screen.dart';
 import '../profile/profile_screen.dart';
 import '../profile/student_profile_screen.dart';
-import 'widgets/avatar_list.dart';
 import 'widgets/feed_card.dart';
 
 class StudentFeedScreen extends StatefulWidget {
@@ -239,8 +238,6 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
-              const AvatarList(limit: 5),
               const SizedBox(height: 16),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
