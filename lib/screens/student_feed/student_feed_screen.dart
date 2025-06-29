@@ -37,7 +37,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance
-        .collection('users')
+        .collection('users') // ✅ Must match where profile data is stored
         .doc(user.uid)
         .get();
     final data = doc.data() ?? {};
@@ -126,10 +126,11 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 Navigator.pop(context);
                 final me = FirebaseAuth.instance.currentUser?.uid;
                 if (me != null) {
-                  Navigator.pushNamed(
+                  Navigator.push(
                     context,
-                    StudentProfileScreen.routeName,
-                    arguments: me,
+                    MaterialPageRoute(
+                      builder: (_) => StudentProfileScreen(studentId: me),
+                    ),
                   );
                 } else {
                   Navigator.pushReplacementNamed(
@@ -186,10 +187,11 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 onPressed: () {
                   final me = FirebaseAuth.instance.currentUser?.uid;
                   if (me != null) {
-                    Navigator.pushNamed(
+                    Navigator.push(
                       context,
-                      StudentProfileScreen.routeName,
-                      arguments: me,
+                      MaterialPageRoute(
+                        builder: (_) => StudentProfileScreen(studentId: me),
+                      ),
                     );
                   } else {
                     Navigator.pushReplacementNamed(

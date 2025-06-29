@@ -100,10 +100,13 @@ class _FeedCardState extends State<FeedCard> {
             InkWell(
               borderRadius: BorderRadius.circular(32),
               onTap: () {
-                Navigator.pushNamed(
+                // Navigate to the correct student's profile using passed studentId
+                Navigator.push(
                   context,
-                  StudentProfileScreen.routeName,
-                  arguments: widget.studentId,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        StudentProfileScreen(studentId: widget.studentId),
+                  ),
                 );
               },
               child: Row(
