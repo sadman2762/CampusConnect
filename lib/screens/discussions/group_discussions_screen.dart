@@ -47,11 +47,12 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     if (text.isEmpty || _me == null) return;
     final uid = _me!.uid;
     final avatarUrl = await _getUserAvatar(uid);
+    final now = Timestamp.now();
     await _messagesCol.add({
       'author': _myName,
       'avatar': avatarUrl,
       'text': text,
-      'timestamp': FieldValue.serverTimestamp(),
+      'timestamp': now,
     });
     _controller.clear();
   }
@@ -118,9 +119,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   child: Column(
                     children: [
                       Text(
-                        widget.groupName == 'Web Technologies'
-                            ? 'General Chat'
-                            : widget.groupName,
+                        widget.groupName,
                         style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -263,10 +262,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                               separatorBuilder: (_, __) =>
                                   const Divider(height: 0),
                               itemBuilder: (_, i) => ListTile(
-                                title: Text(
-                                    data[i]['name'] == 'Web Technologies'
-                                        ? 'General Chat'
-                                        : data[i]['name']),
+                                title: Text(data[i]['name']),
                                 trailing: Text('${data[i]['score']}'),
                               ),
                             ),
@@ -322,9 +318,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   itemCount: _filteredGroups.length,
                   itemBuilder: (_, i) => ListTile(
                     leading: const Icon(Icons.group),
-                    title: Text(_filteredGroups[i] == 'Web Technologies'
-                        ? 'General Chat'
-                        : _filteredGroups[i]),
+                    title: Text(_filteredGroups[i]),
                     onTap: () {
                       Navigator.pop(c);
                       Navigator.pushReplacement(
@@ -359,6 +353,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     'Introduction to Computer Science',
     'High-Level Programming 1',
     'Web Technologies',
+    'General Chat',
     'Applied Mathematics',
     'Foundations of Computer Security',
     'Foundations of AI',

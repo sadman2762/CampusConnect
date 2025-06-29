@@ -29,19 +29,22 @@ class _QueriesScreenState extends State<QueriesScreen> {
     super.dispose();
   }
 
-  /// Stream of either all queries or just mine
   Stream<QuerySnapshot<Map<String, dynamic>>> get _queryStream {
     final col = FirebaseFirestore.instance
         .collection('queries')
         .orderBy('timestamp', descending: true);
-    return _viewMy == 1
-        ? col.where('uid', isEqualTo: _myUid).snapshots()
-        : col.snapshots();
+
+    if (_viewMy == 1) {
+      if (_myUid.isEmpty) return const Stream.empty();
+      return col.where('uid', isEqualTo: _myUid).snapshots();
+    } else {
+      return col.snapshots();
+    }
   }
 
   Future<void> _postNewQuery() async {
     final text = _newQueryController.text.trim();
-    if (text.isEmpty || _me == null) return;
+    if (text.isEmpty || _myUid.isEmpty) return;
     await FirebaseFirestore.instance.collection('queries').add({
       'author': _myName,
       'title': text,
@@ -51,24 +54,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
       'timestamp': FieldValue.serverTimestamp(),
     });
     _newQueryController.clear();
-  }
-
-  /// Handles the like logic ensuring one like per user
-  Future<void> _handleLike(String queryId) async {
-    final likeRef = FirebaseFirestore.instance
-        .collection('queries')
-        .doc(queryId)
-        .collection('likes')
-        .doc(_myUid);
-
-    final alreadyLiked = await likeRef.get();
-    if (alreadyLiked.exists) return;
-
-    await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
-    await FirebaseFirestore.instance
-        .collection('queries')
-        .doc(queryId)
-        .update({'likes': FieldValue.increment(1)});
   }
 
   @override
@@ -83,9 +68,12 @@ class _QueriesScreenState extends State<QueriesScreen> {
         child: Column(
           children: [
             const SizedBox(height: 24),
-            Text('Queries Section',
-                style: textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Queries Section',
+              style: textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -125,46 +113,56 @@ class _QueriesScreenState extends State<QueriesScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _queryStream,
-                builder: (ctx, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final docs = snap.data?.docs ?? [];
-                  if (docs.isEmpty) {
-                    return const Center(child: Text('No queries yet.'));
-                  }
-                  return ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    itemCount: docs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                    itemBuilder: (_, i) {
-                      final doc = docs[i];
-                      final data = doc.data();
-                      return QueryCard(
-                        queryId: doc.id,
-                        author: data['author'] as String,
-                        title: data['title'] as String,
-                        text: data['text'] as String,
-                      );
-                    },
-                  );
-                },
+            if (_viewMy == 1 && _myUid.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text('Please log in to view your queries.'),
+                ),
+              )
+            else
+              Expanded(
+                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: _queryStream,
+                  builder: (ctx, snap) {
+                    if (snap.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final docs = snap.data?.docs ?? [];
+                    if (docs.isEmpty) {
+                      return const Center(child: Text('No queries yet.'));
+                    }
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: docs.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (_, i) {
+                        final doc = docs[i];
+                        final data = doc.data();
+                        return QueryCard(
+                          queryId: doc.id,
+                          author: data['author'] as String,
+                          title: data['title'] as String,
+                          text: data['text'] as String,
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         elevation: 6,
         backgroundColor: Colors.white,
-        child: const Text('4TY',
-            style: TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
+        child: const Text(
+          '4TY',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         onPressed: () => Navigator.pushNamed(context, AIChatScreen.routeName),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -181,8 +179,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               IconButton(
-                icon: Icon(Icons.list_alt,
-                    color: _viewMy == 1 ? theme.primaryColor : Colors.black54),
+                icon: Icon(
+                  Icons.list_alt,
+                  color: _viewMy == 1 ? theme.primaryColor : Colors.black54,
+                ),
                 onPressed: () => setState(() => _viewMy = 1),
               ),
               const SizedBox(width: 48),
@@ -208,8 +208,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Top Queries',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Top Queries',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
