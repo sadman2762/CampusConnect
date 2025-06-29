@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
 
-class StudentProfileScreen extends StatelessWidget {
+class StudentProfileScreen extends StatefulWidget {
   static const routeName = '/student_profile';
 
   final String studentId;
@@ -12,6 +12,11 @@ class StudentProfileScreen extends StatelessWidget {
   const StudentProfileScreen({Key? key, required this.studentId})
       : super(key: key);
 
+  @override
+  State<StudentProfileScreen> createState() => _StudentProfileScreenState();
+}
+
+class _StudentProfileScreenState extends State<StudentProfileScreen> {
   String _ordinalSuffix(String y) {
     switch (y) {
       case '1':
@@ -29,23 +34,35 @@ class StudentProfileScreen extends StatelessWidget {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    final connectionRef = FirebaseFirestore.instance
-        .collection('connections')
-        .doc(targetId)
-        .collection('requests')
-        .doc(currentUser.uid);
+    try {
+      final connectionRef = FirebaseFirestore.instance
+          .collection('connections')
+          .doc(targetId)
+          .collection('requests')
+          .doc(currentUser.uid);
 
-    await connectionRef.set({
-      'senderId': currentUser.uid,
-      'timestamp': FieldValue.serverTimestamp(),
-      'status': 'pending',
-    });
+      final snapshot = await connectionRef.get();
+      if (snapshot.exists) {
+        debugPrint("Connection request already exists");
+        return;
+      }
+
+      await connectionRef.set({
+        'senderId': currentUser.uid,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': 'pending',
+      });
+
+      debugPrint("Connection request sent successfully");
+    } catch (e) {
+      debugPrint("Error sending connection request: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
-    final bool isOwnProfile = studentId == currentUser?.uid;
+    final bool isOwnProfile = widget.studentId == currentUser?.uid;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -58,8 +75,10 @@ class StudentProfileScreen extends StatelessWidget {
         ),
       ),
       body: FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        future:
-            FirebaseFirestore.instance.collection('users').doc(studentId).get(),
+        future: FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.studentId)
+            .get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -130,10 +149,7 @@ class StudentProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 20),
-
-                // Bio
                 if (bio.isNotEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -145,8 +161,6 @@ class StudentProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // University & Year
                 if (university.isNotEmpty || year.isNotEmpty) ...[
                   Text(
                     university,
@@ -159,50 +173,75 @@ class StudentProfileScreen extends StatelessWidget {
                     ),
                   const SizedBox(height: 24),
                 ],
-
-                // Connect & Message buttons
                 if (!isOwnProfile)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              await _sendConnectionRequest(studentId);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Connection request sent!"),
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('connections')
+                        .doc(widget.studentId)
+                        .collection('requests')
+                        .doc(currentUser!.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final connectionData = snapshot.data?.data();
+                      final status = connectionData?['status'];
+
+                      Widget button;
+                      if (status == 'pending') {
+                        button = OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.hourglass_empty),
+                          label: const Text("Pending"),
+                        );
+                      } else if (status == 'accepted') {
+                        button = OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text("Connected"),
+                        );
+                      } else {
+                        button = OutlinedButton.icon(
+                          onPressed: () async {
+                            await _sendConnectionRequest(widget.studentId);
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Connection request sent!"),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.person_add_alt_1),
+                          label: const Text("Connect"),
+                        );
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                        child: Row(
+                          children: [
+                            Expanded(child: button),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    GuidanceScreen.routeName,
+                                  );
+                                },
+                                icon: const Icon(Icons.message),
+                                label: const Text("Private Message"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.person_add_alt_1),
-                            label: const Text("Connect"),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                GuidanceScreen.routeName,
-                              );
-                            },
-                            icon: const Icon(Icons.message),
-                            label: const Text("Private Message"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-
                 const SizedBox(height: 24),
-
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Row(
@@ -214,9 +253,7 @@ class StudentProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 36),
-
                 Text(
                   "© 2025 4TY - all rights reserved",
                   style: TextStyle(color: Colors.grey.shade600),
