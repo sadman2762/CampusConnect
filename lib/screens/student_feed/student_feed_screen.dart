@@ -38,15 +38,15 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
     if (user == null) return;
 
     final doc = await FirebaseFirestore.instance
-        .collection('students')
+        .collection('users')
         .doc(user.uid)
         .get();
     final data = doc.data() ?? {};
     final name = (data['name'] as String?)?.isNotEmpty == true
         ? data['name'] as String
         : (user.displayName ?? 'No Name');
-    final avatar = (data['avatar'] as String?)?.isNotEmpty == true
-        ? data['avatar'] as String
+    final avatar = (data['profilePic'] as String?)?.isNotEmpty == true
+        ? data['profilePic'] as String
         : (user.photoURL ?? '');
 
     await _feedCol.add({
@@ -54,7 +54,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
       'name': name,
       'avatar': avatar,
       'content': content,
-      'timestamp': FieldValue.serverTimestamp(),
+      'timestamp': Timestamp.now(),
     });
 
     _statusController.clear();
@@ -240,12 +240,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Real avatars list (no dummies, optimized stream)
               const AvatarList(limit: 5),
               const SizedBox(height: 16),
-
-              // Firestore-backed feed
               Expanded(
                 child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: _feedStream,
