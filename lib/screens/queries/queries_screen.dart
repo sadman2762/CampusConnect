@@ -17,7 +17,7 @@ class QueriesScreen extends StatefulWidget {
 class _QueriesScreenState extends State<QueriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _newQueryController = TextEditingController();
-  int _viewMy = 0; // 0 = all queries, 1 = my queries
+  int _viewMy = 0;
 
   User? get _me => FirebaseAuth.instance.currentUser;
   String get _myUid => _me?.uid ?? '';
@@ -45,14 +45,15 @@ class _QueriesScreenState extends State<QueriesScreen> {
   Future<void> _postNewQuery() async {
     final text = _newQueryController.text.trim();
     if (text.isEmpty || _myUid.isEmpty) return;
+
     await FirebaseFirestore.instance.collection('queries').add({
       'author': _myName,
       'title': text,
-      'text': text,
       'uid': _myUid,
       'likes': 0,
       'timestamp': FieldValue.serverTimestamp(),
     });
+
     _newQueryController.clear();
   }
 
@@ -127,10 +128,13 @@ class _QueriesScreenState extends State<QueriesScreen> {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
+
                     final docs = snap.data?.docs ?? [];
+
                     if (docs.isEmpty) {
                       return const Center(child: Text('No queries yet.'));
                     }
+
                     return ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       itemCount: docs.length,
@@ -138,11 +142,12 @@ class _QueriesScreenState extends State<QueriesScreen> {
                       itemBuilder: (_, i) {
                         final doc = docs[i];
                         final data = doc.data();
+
                         return QueryCard(
                           queryId: doc.id,
-                          author: data['author'] as String,
-                          title: data['title'] as String,
-                          text: data['text'] as String,
+                          author: data['author'] ?? 'Unknown',
+                          title: data['title'] ?? '',
+                          text: '', // ✅ remove small-text subtitle
                         );
                       },
                     );
@@ -224,10 +229,13 @@ class _QueriesScreenState extends State<QueriesScreen> {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
+
                     final topDocs = snap.data?.docs ?? [];
+
                     if (topDocs.isEmpty) {
                       return const Center(child: Text('No queries yet.'));
                     }
+
                     return ListView.separated(
                       itemCount: topDocs.length,
                       separatorBuilder: (_, __) => const Divider(),
@@ -236,7 +244,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
                         final likes = data['likes'] as int? ?? 0;
                         return ListTile(
                           leading: Text('${i + 1}.'),
-                          title: Text(data['title'] as String),
+                          title: Text(data['title'] ?? ''),
                           trailing: Text('$likes 👍'),
                         );
                       },

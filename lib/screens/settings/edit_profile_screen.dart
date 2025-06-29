@@ -1,5 +1,3 @@
-// lib/screens/settings/edit_profile_screen.dart
-
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -59,7 +57,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (_pickedImage != null) {
         final storageRef = FirebaseStorage.instance
             .ref()
-            .child('profilePhotos/${_user.uid}/avatar.jpg'); // ✅ Updated path
+            .child('profilePhotos/${_user.uid}/avatar.jpg');
 
         if (kIsWeb) {
           final bytes = await _pickedImage!.readAsBytes();
@@ -94,7 +92,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'university': _univCtrl.text.trim(),
         'year': _year,
       };
-      if (photoURL != null) data['photoURL'] = photoURL;
+      if (photoURL != null) data['profilePic'] = photoURL; // ✅ fixed key
 
       await _firestore
           .collection('users')
