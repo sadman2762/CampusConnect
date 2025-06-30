@@ -31,51 +31,39 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   Future<void> _sendConnectionRequest(String targetId) async {
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      debugPrint("No authenticated user.");
-      return;
-    }
+    if (currentUser == null) return;
 
     try {
       final connectionDoc =
           FirebaseFirestore.instance.collection('connections').doc(targetId);
-      debugPrint("Checking if parent document exists for targetId: $targetId");
 
       final docSnapshot = await connectionDoc.get();
       if (!docSnapshot.exists) {
-        await connectionDoc.set({}, SetOptions(merge: true));
-        debugPrint("Created parent document /connections/$targetId");
+        await connectionDoc.set({});
       }
 
       final connectionRef =
           connectionDoc.collection('requests').doc(currentUser.uid);
-      debugPrint(
-          "Checking if request already exists for user: ${currentUser.uid}");
 
       final snapshot = await connectionRef.get();
       if (snapshot.exists) {
-        debugPrint("Connection request already exists");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Request already sent.")),
         );
         return;
       }
 
-      debugPrint(
-          "Sending new connection request to $targetId from ${currentUser.uid}");
       await connectionRef.set({
         'senderId': currentUser.uid,
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'pending',
       });
 
-      debugPrint("Connection request sent successfully");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Connection request sent!")),
       );
       setState(() {});
     } catch (e) {
-      debugPrint("Error sending connection request: ${e.toString()}");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to send request: ${e.toString()}")),
       );
@@ -143,11 +131,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                       const SizedBox(height: 16),
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage: avatar.startsWith('http')
-                            ? NetworkImage(avatar)
-                            : avatar.isNotEmpty
-                                ? AssetImage(avatar) as ImageProvider
-                                : null,
+                        backgroundImage:
+                            avatar.isNotEmpty ? NetworkImage(avatar) : null,
                         child: avatar.isEmpty
                             ? const Icon(Icons.person_outline, size: 50)
                             : null,

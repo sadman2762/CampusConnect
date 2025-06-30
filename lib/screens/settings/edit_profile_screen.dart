@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -47,7 +48,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _pickAvatar() async {
     final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
-    if (file != null) setState(() => _pickedImage = file);
+    if (file != null) {
+      setState(() => _pickedImage = file);
+      print('Debug: Avatar picked at path: ${file.path}'); // Added debug log
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -55,6 +59,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _loading = true;
       _uploadProgress = 0.0;
     });
+
+    print('Debug: _saveProfile called'); // Added debug log
+    print(
+        'Debug: Current pickedImage: $_pickedImage'); // Added debug log to check if image is set
 
     try {
       String? photoURL;
@@ -72,6 +80,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         try {
           if (kIsWeb) {
             final bytes = await _pickedImage!.readAsBytes();
+
+            if (bytes.length > 500 * 1024) {
+              throw Exception(
+                  'Image too large. Please use an image under 500 KB.');
+            }
+
             final uploadTask = storageRef.putData(
               bytes,
               SettableMetadata(contentType: 'image/jpeg'),
@@ -84,9 +98,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               });
             });
 
-            await uploadTask.timeout(const Duration(seconds: 60));
+            await uploadTask; // removed timeout wrapper to surface actual errors during upload
           } else {
-            final uploadTask = storageRef.putFile(File(_pickedImage!.path));
+            final file = File(_pickedImage!.path);
+            final uploadTask = storageRef.putFile(file);
+
             uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
               final progress = snapshot.bytesTransferred / snapshot.totalBytes;
               setState(() {
@@ -94,10 +110,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               });
             });
 
-            await uploadTask.timeout(const Duration(seconds: 60));
+            await uploadTask.timeout(
+              const Duration(minutes: 2),
+              onTimeout: () => throw TimeoutException('Upload took too long'),
+            );
           }
         } catch (uploadError) {
           print('Upload error: $uploadError');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Upload failed: $uploadError')),
+          );
           throw Exception('Upload failed: $uploadError');
         }
 
