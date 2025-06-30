@@ -96,22 +96,16 @@ class SettingsScreen extends StatelessWidget {
                   Navigator.pushNamed(context, ThemeSettingsScreen.routeName),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 48),
 
-            // Logout Button
-            ElevatedButton.icon(
-              onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                if (context.mounted) {
-                  Navigator.of(context).popUntil((r) => r.isFirst);
-                }
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text('Log Out'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
+            // Footer Text
+            Text(
+              '© 4TY 2025 - all rights reserved',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[600],
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
