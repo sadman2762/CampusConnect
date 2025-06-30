@@ -6,7 +6,6 @@ import '../guidance/guidance_screen.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   static const routeName = '/student_profile';
-
   final String studentId;
 
   const StudentProfileScreen({Key? key, required this.studentId})
@@ -32,21 +31,38 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
 
   Future<void> _sendConnectionRequest(String targetId) async {
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      debugPrint("No authenticated user.");
+      return;
+    }
 
     try {
-      final connectionRef = FirebaseFirestore.instance
-          .collection('connections')
-          .doc(targetId)
-          .collection('requests')
-          .doc(currentUser.uid);
+      final connectionDoc =
+          FirebaseFirestore.instance.collection('connections').doc(targetId);
+      debugPrint("Checking if parent document exists for targetId: $targetId");
+
+      final docSnapshot = await connectionDoc.get();
+      if (!docSnapshot.exists) {
+        await connectionDoc.set({}, SetOptions(merge: true));
+        debugPrint("Created parent document /connections/$targetId");
+      }
+
+      final connectionRef =
+          connectionDoc.collection('requests').doc(currentUser.uid);
+      debugPrint(
+          "Checking if request already exists for user: ${currentUser.uid}");
 
       final snapshot = await connectionRef.get();
       if (snapshot.exists) {
         debugPrint("Connection request already exists");
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Request already sent.")),
+        );
         return;
       }
 
+      debugPrint(
+          "Sending new connection request to $targetId from ${currentUser.uid}");
       await connectionRef.set({
         'senderId': currentUser.uid,
         'timestamp': FieldValue.serverTimestamp(),
@@ -54,8 +70,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
       });
 
       debugPrint("Connection request sent successfully");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Connection request sent!")),
+      );
+      setState(() {});
     } catch (e) {
-      debugPrint("Error sending connection request: $e");
+      debugPrint("Error sending connection request: ${e.toString()}");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to send request: ${e.toString()}")),
+      );
     }
   }
 
@@ -94,10 +117,9 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           final bio = data['bio'] ?? '';
           final university = data['university'] ?? '';
           final year = data['year'] ?? '';
-
-          final projects = (data['projects']?.toString()) ?? '0';
-          final followers = (data['followers']?.toString()) ?? '0';
-          final reviews = (data['reviews']?.toString()) ?? '0';
+          final projects = data['projects']?.toString() ?? '0';
+          final followers = data['followers']?.toString() ?? '0';
+          final reviews = data['reviews']?.toString() ?? '0';
 
           return SingleChildScrollView(
             child: Column(
@@ -162,10 +184,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                   const SizedBox(height: 16),
                 ],
                 if (university.isNotEmpty || year.isNotEmpty) ...[
-                  Text(
-                    university,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(university,
+                      style: Theme.of(context).textTheme.bodyMedium),
                   if (year.isNotEmpty)
                     Text(
                       '$year${_ordinalSuffix(year)} year',
@@ -200,15 +220,8 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                         );
                       } else {
                         button = OutlinedButton.icon(
-                          onPressed: () async {
-                            await _sendConnectionRequest(widget.studentId);
-                            setState(() {});
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Connection request sent!"),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _sendConnectionRequest(widget.studentId),
                           icon: const Icon(Icons.person_add_alt_1),
                           label: const Text("Connect"),
                         );
@@ -224,9 +237,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: () {
                                   Navigator.pushNamed(
-                                    context,
-                                    GuidanceScreen.routeName,
-                                  );
+                                      context, GuidanceScreen.routeName);
                                 },
                                 icon: const Icon(Icons.message),
                                 label: const Text("Private Message"),

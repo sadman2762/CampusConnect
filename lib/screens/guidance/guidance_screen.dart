@@ -32,6 +32,28 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     }
   }
 
+  Future<void> _respondToRequest(String requestId, bool accept) async {
+    try {
+      final docRef = FirebaseFirestore.instance
+          .collection('connections')
+          .doc(currentUserId)
+          .collection('requests')
+          .doc(requestId);
+
+      await docRef.update({'status': accept ? 'accepted' : 'rejected'});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(accept ? "Request accepted" : "Request rejected")),
+      );
+    } catch (e) {
+      debugPrint("Failed to respond to request: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${e.toString()}")),
+      );
+    }
+  }
+
   Stream<List<QueryDocumentSnapshot>> _getRegisteredUsers() {
     return FirebaseFirestore.instance.collection('users').snapshots().map(
       (snapshot) {
@@ -281,11 +303,77 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                       );
                     },
                   ),
-                  const Center(
-                    child: Text(
-                      'No requests yet.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
+                  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('connections')
+                        .doc(currentUserId)
+                        .collection('requests')
+                        .where('status', isEqualTo: 'pending')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final requests = snapshot.data?.docs ?? [];
+                      if (requests.isEmpty) {
+                        return const Center(
+                          child: Text('No connection requests yet.'),
+                        );
+                      }
+                      return ListView.builder(
+                        itemCount: requests.length,
+                        itemBuilder: (context, index) {
+                          final request = requests[index];
+                          final senderId = request['senderId'];
+                          return FutureBuilder<
+                              DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(senderId)
+                                .get(),
+                            builder: (context, userSnapshot) {
+                              if (!userSnapshot.hasData ||
+                                  !userSnapshot.data!.exists) {
+                                return const SizedBox();
+                              }
+                              final user = userSnapshot.data!.data()!;
+                              final name = user['name'] ?? 'Unknown';
+                              final avatar = user['profilePic'] ?? '';
+
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: avatar.startsWith('http')
+                                      ? NetworkImage(avatar)
+                                      : const AssetImage(
+                                              'assets/images/profile.jpg')
+                                          as ImageProvider,
+                                ),
+                                title: Text(name),
+                                subtitle:
+                                    const Text("Wants to connect with you"),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.check,
+                                          color: Colors.green),
+                                      onPressed: () =>
+                                          _respondToRequest(request.id, true),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close,
+                                          color: Colors.red),
+                                      onPressed: () =>
+                                          _respondToRequest(request.id, false),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),
