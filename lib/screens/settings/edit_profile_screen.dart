@@ -19,6 +19,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final _picker = ImagePicker();
   XFile? _pickedImage;
   bool _loading = false;
+  double _uploadProgress = 0.0;
 
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
@@ -50,31 +51,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveProfile() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _uploadProgress = 0.0;
+    });
+
     try {
       String? photoURL;
 
       if (_pickedImage != null) {
+        print('Picked image: ${_pickedImage!.path}');
+        print('User UID: ${_user.uid}');
+
         final storageRef = FirebaseStorage.instance
             .ref()
-            .child('profilePhotos/${_user.uid}/avatar.jpg');
+            .child('user_avatars/${_user.uid}.jpg');
 
-        if (kIsWeb) {
-          final bytes = await _pickedImage!.readAsBytes();
-          await storageRef
-              .putData(bytes, SettableMetadata(contentType: 'image/jpeg'))
-              .timeout(const Duration(seconds: 20), onTimeout: () {
-            throw Exception('Upload timed out');
-          });
-        } else {
-          await storageRef
-              .putFile(File(_pickedImage!.path))
-              .timeout(const Duration(seconds: 20), onTimeout: () {
-            throw Exception('Upload timed out');
-          });
+        print('Uploading to: user_avatars/${_user.uid}.jpg');
+
+        try {
+          if (kIsWeb) {
+            final bytes = await _pickedImage!.readAsBytes();
+            final uploadTask = storageRef.putData(
+              bytes,
+              SettableMetadata(contentType: 'image/jpeg'),
+            );
+
+            uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+              final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+              setState(() {
+                _uploadProgress = progress;
+              });
+            });
+
+            await uploadTask.timeout(const Duration(seconds: 60));
+          } else {
+            final uploadTask = storageRef.putFile(File(_pickedImage!.path));
+            uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+              final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+              setState(() {
+                _uploadProgress = progress;
+              });
+            });
+
+            await uploadTask.timeout(const Duration(seconds: 60));
+          }
+        } catch (uploadError) {
+          print('Upload error: $uploadError');
+          throw Exception('Upload failed: $uploadError');
         }
 
-        photoURL = await storageRef.getDownloadURL();
+        final downloadUrl = await storageRef.getDownloadURL();
+        photoURL = '$downloadUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
         await _user.updatePhotoURL(photoURL);
         await _user.reload();
         _user = FirebaseAuth.instance.currentUser!;
@@ -89,7 +118,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       final data = {
-        'name': newName, // ✅ FIX: update Firestore `name`
+        'name': newName,
         'bio': _bioCtrl.text.trim(),
         'university': _univCtrl.text.trim(),
         'year': _year,
@@ -108,6 +137,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
+      print('Save profile error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
@@ -153,6 +183,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
+                  if (_uploadProgress > 0 && _uploadProgress < 1)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: LinearProgressIndicator(value: _uploadProgress),
+                    ),
                   Center(
                     child: Stack(
                       children: [

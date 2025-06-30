@@ -30,37 +30,47 @@ class _QueryCardState extends State<QueryCard> {
   String get _myUid => _me?.uid ?? '';
   String get _myName => _me?.email?.split('@').first ?? 'Anonymous';
 
-  /// Check if user already liked this query
   Future<void> _checkIfLiked() async {
     if (_myUid.isEmpty) return;
 
-    final likeDoc = await FirebaseFirestore.instance
-        .collection('queries')
-        .doc(widget.queryId)
-        .collection('likes')
-        .doc(_myUid)
-        .get();
+    try {
+      final likeDoc = await FirebaseFirestore.instance
+          .collection('queries')
+          .doc(widget.queryId)
+          .collection('likes')
+          .doc(_myUid)
+          .get();
 
-    setState(() {
-      _alreadyLiked = likeDoc.exists;
-    });
-  }
-
-  /// Get current like count
-  Future<void> _fetchLikes() async {
-    final doc = await FirebaseFirestore.instance
-        .collection('queries')
-        .doc(widget.queryId)
-        .get();
-
-    if (doc.exists) {
       setState(() {
-        _likes = doc.data()?['likes'] ?? 0;
+        _alreadyLiked = likeDoc.exists;
       });
+
+      print(
+          '👍 Like check for ${widget.queryId} by $_myUid: ${likeDoc.exists}');
+    } catch (e) {
+      print('❌ Error checking like: $e');
     }
   }
 
-  /// Like button logic
+  Future<void> _fetchLikes() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('queries')
+          .doc(widget.queryId)
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          _likes = doc.data()?['likes'] ?? 0;
+        });
+        print('ℹ️ Likes for ${widget.queryId}: $_likes');
+      }
+    } catch (e) {
+      print('❌ Error fetching likes: $e');
+    }
+  }
+
+  /// STEP 1 Debugging: split update and set
   Future<void> _toggleLike() async {
     if (_alreadyLiked || _myUid.isEmpty) return;
 
@@ -68,12 +78,20 @@ class _QueryCardState extends State<QueryCard> {
         FirebaseFirestore.instance.collection('queries').doc(widget.queryId);
     final likeRef = queryRef.collection('likes').doc(_myUid);
 
-    await FirebaseFirestore.instance.runTransaction((transaction) async {
-      final freshSnap = await transaction.get(queryRef);
-      final currentLikes = freshSnap['likes'] ?? 0;
-      transaction.update(queryRef, {'likes': currentLikes + 1});
-      transaction.set(likeRef, {'likedAt': FieldValue.serverTimestamp()});
-    });
+    try {
+      await queryRef.update({'likes': FieldValue.increment(1)});
+      print('✔️ Likes field updated successfully');
+    } catch (e) {
+      print('❌ Failed to update likes field: $e');
+    }
+
+    try {
+      await likeRef.set(
+          {'likedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+      print('✔️ Like document created successfully');
+    } catch (e) {
+      print('❌ Failed to create like document: $e');
+    }
 
     setState(() {
       _alreadyLiked = true;
@@ -81,22 +99,26 @@ class _QueryCardState extends State<QueryCard> {
     });
   }
 
-  /// Answer post logic
   Future<void> _postAnswer() async {
     final text = _answerController.text.trim();
     if (text.isEmpty || _myUid.isEmpty) return;
 
-    await FirebaseFirestore.instance
-        .collection('queries')
-        .doc(widget.queryId)
-        .collection('answers')
-        .add({
-      'author': _myName,
-      'text': text,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      await FirebaseFirestore.instance
+          .collection('queries')
+          .doc(widget.queryId)
+          .collection('answers')
+          .add({
+        'author': _myName,
+        'text': text,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
 
-    _answerController.clear();
+      _answerController.clear();
+      print('✅ Answer posted to ${widget.queryId}');
+    } catch (e) {
+      print('❌ Error posting answer: $e');
+    }
   }
 
   @override
@@ -159,8 +181,6 @@ class _QueryCardState extends State<QueryCard> {
             ),
           ),
           const SizedBox(height: 12),
-
-          // Like + Answers UI
           Row(
             children: [
               IconButton(
@@ -181,7 +201,6 @@ class _QueryCardState extends State<QueryCard> {
               ),
             ],
           ),
-
           if (_showAnswers) ...[
             const Divider(),
             SizedBox(
@@ -189,22 +208,18 @@ class _QueryCardState extends State<QueryCard> {
               child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: answersStream,
                 builder: (ctx, snap) {
-                  if (!snap.hasData) {
+                  if (!snap.hasData)
                     return const Center(child: CircularProgressIndicator());
-                  }
                   final docs = snap.data!.docs;
-                  if (docs.isEmpty) {
+                  if (docs.isEmpty)
                     return const Center(child: Text('No answers yet.'));
-                  }
                   return ListView.separated(
                     itemCount: docs.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final a = docs[i].data();
-                      return Text(
-                        '${a['author']}: ${a['text']}',
-                        style: const TextStyle(fontSize: 14),
-                      );
+                      return Text('${a['author']}: ${a['text']}',
+                          style: const TextStyle(fontSize: 14));
                     },
                   );
                 },
