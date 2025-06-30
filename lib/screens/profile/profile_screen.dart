@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
 import '../home/home_screen.dart';
+import '../courses/courses_screen.dart'; // Add your courses screen route
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -39,10 +40,10 @@ class ProfileScreen extends StatelessWidget {
         future:
             FirebaseFirestore.instance.collection('users').doc(user.uid).get(),
         builder: (context, snapshot) {
-          // Firestore loading / error
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+
           final data = snapshot.data?.data() ?? {};
           final bio = data['bio'] as String? ?? '';
           final university = data['university'] as String? ?? '';
@@ -51,7 +52,7 @@ class ProfileScreen extends StatelessWidget {
           return SingleChildScrollView(
             child: Column(
               children: [
-                // Gradient Header with avatar, name & email
+                // Header
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.only(bottom: 16),
@@ -124,7 +125,7 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 24),
                 ],
 
-                // Connect & Message buttons
+                // Buttons: Courses + Message
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40.0),
                   child: Row(
@@ -132,10 +133,13 @@ class ProfileScreen extends StatelessWidget {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {
-                            // Connect logic
+                            Navigator.pushNamed(
+                              context,
+                              CoursesScreen.routeName,
+                            );
                           },
-                          icon: const Icon(Icons.person_add_alt_1),
-                          label: const Text("Connect"),
+                          icon: const Icon(Icons.menu_book),
+                          label: const Text("Courses"),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -161,22 +165,74 @@ class ProfileScreen extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // Stats Row: Friends, Rank, Comments
+                // Stats: Connections, Courses, Projects
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: const [
-                      _StatCard(label: "Friends", value: "65"),
-                      _StatCard(label: "Rank", value: "12"),
-                      _StatCard(label: "Comments", value: "21"),
+                      _StatCard(label: "Connections", value: "24"),
+                      _StatCard(label: "Courses", value: "6"),
+                      _StatCard(label: "Projects", value: "3"),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Skills & Experience side by side
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Skills",
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                "• Flutter\n• Firebase\n• Python\n• UI/UX Design",
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Experience",
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                "Intern at XYZ Tech\nFreelancer\nResearch Assistant",
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 36),
 
-                // Footer
                 Text(
                   "© 2025 4TY",
                   style: TextStyle(color: Colors.grey.shade600),
