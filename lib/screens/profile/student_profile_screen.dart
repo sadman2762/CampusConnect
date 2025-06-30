@@ -1,8 +1,6 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
@@ -102,12 +100,15 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           final data = snapshot.data!.data()!;
           final name = data['name'] ?? 'Unknown';
           final email = data['email'] ?? '';
-          // Pull the stored photoURL, falling back to Auth's photoURL on your own profile
-          String rawAvatarField = data['photoURL'] ?? '';
-          if (rawAvatarField.isEmpty &&
-              isOwnProfile &&
-              currentUser?.photoURL != null) {
-            rawAvatarField = currentUser!.photoURL!;
+
+          // ⚙️ AVATAR: prefer photoURL, then legacy profilePic
+          String rawAvatarField = data['photoURL'] as String? ?? '';
+          if (rawAvatarField.isEmpty) {
+            rawAvatarField = data['profilePic'] as String? ?? '';
+          }
+          // ⚙️ Fallback to Auth photoURL for your own profile
+          if (rawAvatarField.isEmpty && isOwnProfile) {
+            rawAvatarField = currentUser?.photoURL ?? '';
           }
 
           final bio = data['bio'] ?? '';
@@ -117,7 +118,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           final followers = data['followers']?.toString() ?? '0';
           final reviews = data['reviews']?.toString() ?? '0';
 
-          // Decide how to get the final avatar URL
+          // ⚙️ AVATAR: decide how to fetch
           Future<String> avatarUrlFuture;
           if (rawAvatarField.startsWith('http')) {
             avatarUrlFuture = Future.value(rawAvatarField);
@@ -164,8 +165,7 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                                 : null,
                           ),
                           const SizedBox(height: 10),
-                          // “Change Photo” button removed
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 10), // “Change Photo” removed
                           Text(
                             name,
                             style: Theme.of(context)
