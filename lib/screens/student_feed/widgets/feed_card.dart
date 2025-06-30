@@ -46,7 +46,7 @@ class _FeedCardState extends State<FeedCard> {
     if (user == null) return;
 
     final userDoc = await FirebaseFirestore.instance
-        .collection('students')
+        .collection('users') // ✅ Fixed path
         .doc(user.uid)
         .get();
     final profileData = userDoc.data() ?? {};
@@ -54,9 +54,10 @@ class _FeedCardState extends State<FeedCard> {
     final authorName = (profileData['name'] as String?)?.isNotEmpty == true
         ? profileData['name'] as String
         : (user.displayName ?? 'No Name');
-    final authorAvatar = (profileData['avatar'] as String?)?.isNotEmpty == true
-        ? profileData['avatar'] as String
-        : (user.photoURL ?? '');
+    final authorAvatar =
+        (profileData['profilePic'] as String?)?.isNotEmpty == true
+            ? profileData['profilePic'] as String
+            : (user.photoURL ?? '');
 
     await _commentsCol.add({
       'authorId': user.uid,
@@ -100,7 +101,6 @@ class _FeedCardState extends State<FeedCard> {
             InkWell(
               borderRadius: BorderRadius.circular(32),
               onTap: () {
-                // Navigate to the correct student's profile using passed studentId
                 Navigator.push(
                   context,
                   MaterialPageRoute(
