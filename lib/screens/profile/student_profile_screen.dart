@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
@@ -91,17 +94,22 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
             .doc(widget.studentId)
             .get(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting)
             return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || !snapshot.data!.exists) {
+          if (!snapshot.hasData || !snapshot.data!.exists)
             return const Center(child: Text("Student profile not found"));
-          }
 
           final data = snapshot.data!.data()!;
           final name = data['name'] ?? 'Unknown';
           final email = data['email'] ?? '';
-          final avatar = data['profilePic'] ?? '';
+          // Pull the stored photoURL, falling back to Auth's photoURL on your own profile
+          String rawAvatarField = data['photoURL'] ?? '';
+          if (rawAvatarField.isEmpty &&
+              isOwnProfile &&
+              currentUser?.photoURL != null) {
+            rawAvatarField = currentUser!.photoURL!;
+          }
+
           final bio = data['bio'] ?? '';
           final university = data['university'] ?? '';
           final year = data['year'] ?? '';
@@ -109,154 +117,175 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
           final followers = data['followers']?.toString() ?? '0';
           final reviews = data['reviews']?.toString() ?? '0';
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(bottom: 16),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.secondary, AppColors.primary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(50),
-                      bottomRight: Radius.circular(50),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundImage:
-                            avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                        child: avatar.isEmpty
-                            ? const Icon(Icons.person_outline, size: 50)
-                            : null,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(color: Colors.white),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (bio.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text(
-                      bio,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                if (university.isNotEmpty || year.isNotEmpty) ...[
-                  Text(university,
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  if (year.isNotEmpty)
-                    Text(
-                      '$year${_ordinalSuffix(year)} year',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  const SizedBox(height: 24),
-                ],
-                if (!isOwnProfile)
-                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    stream: FirebaseFirestore.instance
-                        .collection('connections')
-                        .doc(widget.studentId)
-                        .collection('requests')
-                        .doc(currentUser!.uid)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      final connectionData = snapshot.data?.data();
-                      final status = connectionData?['status'];
+          // Decide how to get the final avatar URL
+          Future<String> avatarUrlFuture;
+          if (rawAvatarField.startsWith('http')) {
+            avatarUrlFuture = Future.value(rawAvatarField);
+          } else if (rawAvatarField.isNotEmpty) {
+            avatarUrlFuture = FirebaseStorage.instance
+                .ref('user_avatars/$rawAvatarField')
+                .getDownloadURL();
+          } else {
+            avatarUrlFuture = Future.value('');
+          }
 
-                      Widget button;
-                      if (status == 'pending') {
-                        button = OutlinedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.hourglass_empty),
-                          label: const Text("Pending"),
-                        );
-                      } else if (status == 'accepted') {
-                        button = OutlinedButton.icon(
-                          onPressed: null,
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text("Connected"),
-                        );
-                      } else {
-                        button = OutlinedButton.icon(
-                          onPressed: () =>
-                              _sendConnectionRequest(widget.studentId),
-                          icon: const Icon(Icons.person_add_alt_1),
-                          label: const Text("Connect"),
-                        );
-                      }
+          return FutureBuilder<String>(
+            future: avatarUrlFuture,
+            builder: (ctx, urlSnap) {
+              final avatarUrl = urlSnap.data ?? '';
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                        child: Row(
-                          children: [
-                            Expanded(child: button),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.pushNamed(
-                                      context, GuidanceScreen.routeName);
-                                },
-                                icon: const Icon(Icons.message),
-                                label: const Text("Private Message"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.only(bottom: 16),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [AppColors.secondary, AppColors.primary],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                      );
-                    },
-                  ),
-                const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _StatCard(label: "Projects", value: projects),
-                      _StatCard(label: "Followers", value: followers),
-                      _StatCard(label: "Reviews", value: reviews),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(50),
+                          bottomRight: Radius.circular(50),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: avatarUrl.isNotEmpty
+                                ? NetworkImage(avatarUrl)
+                                : null,
+                            child: avatarUrl.isEmpty
+                                ? const Icon(Icons.person_outline, size: 50)
+                                : null,
+                          ),
+                          const SizedBox(height: 10),
+                          // “Change Photo” button removed
+                          const SizedBox(height: 10),
+                          Text(
+                            name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(color: Colors.white),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    if (bio.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                        child: Text(
+                          bio,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                     ],
-                  ),
+                    if (university.isNotEmpty || year.isNotEmpty) ...[
+                      Text(university,
+                          style: Theme.of(context).textTheme.bodyMedium),
+                      if (year.isNotEmpty)
+                        Text(
+                          '$year${_ordinalSuffix(year)} year',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      const SizedBox(height: 24),
+                    ],
+                    if (!isOwnProfile)
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('connections')
+                            .doc(widget.studentId)
+                            .collection('requests')
+                            .doc(currentUser!.uid)
+                            .snapshots(),
+                        builder: (context, connSnap) {
+                          final connData = connSnap.data?.data();
+                          final status = connData?['status'];
+                          Widget button;
+                          if (status == 'pending') {
+                            button = OutlinedButton.icon(
+                              onPressed: null,
+                              icon: const Icon(Icons.hourglass_empty),
+                              label: const Text("Pending"),
+                            );
+                          } else if (status == 'accepted') {
+                            button = OutlinedButton.icon(
+                              onPressed: null,
+                              icon: const Icon(Icons.check_circle_outline),
+                              label: const Text("Connected"),
+                            );
+                          } else {
+                            button = OutlinedButton.icon(
+                              onPressed: () =>
+                                  _sendConnectionRequest(widget.studentId),
+                              icon: const Icon(Icons.person_add_alt_1),
+                              label: const Text("Connect"),
+                            );
+                          }
+                          return Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 40.0),
+                            child: Row(
+                              children: [
+                                Expanded(child: button),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.pushNamed(
+                                          context, GuidanceScreen.routeName);
+                                    },
+                                    icon: const Icon(Icons.message),
+                                    label: const Text("Private Message"),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 24),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _StatCard(label: "Projects", value: projects),
+                          _StatCard(label: "Followers", value: followers),
+                          _StatCard(label: "Reviews", value: reviews),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 36),
+                    Text(
+                      "© 2025 4TY - all rights reserved",
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
-                const SizedBox(height: 36),
-                Text(
-                  "© 2025 4TY - all rights reserved",
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
+              );
+            },
           );
         },
       ),
