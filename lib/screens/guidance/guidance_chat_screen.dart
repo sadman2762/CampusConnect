@@ -15,6 +15,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../services/chat_service.dart';
 
@@ -81,6 +82,33 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     } catch (e) {
       return uid;
     }
+  }
+
+  String cleanMarkdown(String raw) {
+    String text = raw.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+
+    // Fix bullets: Replace "*   " or "*  " with "* "
+    text = text.replaceAllMapped(
+      RegExp(r'^\*\s{2,}', multiLine: true),
+      (m) => '* ',
+    );
+
+    // Ensure blank lines between paragraphs/lists for markdown parsing
+    text = text.replaceAllMapped(
+      RegExp(r'([^\n])\n([^\n])'),
+      (m) => '${m.group(1)}\n\n${m.group(2)}',
+    );
+
+    // Fix smart quotes if Gemini used them
+    text = text.replaceAll('“', '"').replaceAll('”', '"');
+
+    // Escape markdown characters only if not already escaped
+    text = text.replaceAllMapped(
+      RegExp(r'(?<!\\)([*_])'),
+      (m) => '\\${m.group(1)}',
+    );
+
+    return text.trim();
   }
 
   /// Fetches the raw avatar filename from Firestore and resolves URL
@@ -452,10 +480,26 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                         else if (isAudio)
                                           _buildAudioMessage(text)
                                         else ...[
-                                          Text(text,
-                                              style: const TextStyle(
-                                                  fontSize: 16)),
-                                          const SizedBox(height: 6),
+                                          MarkdownBody(
+                                            data: cleanMarkdown(text),
+                                            styleSheet:
+                                                MarkdownStyleSheet.fromTheme(
+                                                        Theme.of(context))
+                                                    .copyWith(
+                                              p: const TextStyle(fontSize: 16),
+                                            ),
+                                            onTapLink:
+                                                (text, href, title) async {
+                                              if (href != null) {
+                                                final uri = Uri.parse(href);
+                                                if (await canLaunchUrl(uri)) {
+                                                  await launchUrl(uri,
+                                                      mode: LaunchMode
+                                                          .externalApplication);
+                                                }
+                                              }
+                                            },
+                                          ),
 
                                           // 🌐 Translate icon + loader
                                           Row(
@@ -485,6 +529,13 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                                           msg.id] = result
                                                               .data['reply'] ??
                                                           '⚠️ No translation';
+                                                      // 🐞 Debug Gemini output
+                                                      final translated = result
+                                                              .data['reply'] ??
+                                                          '⚠️ No translation';
+                                                      print(
+                                                          'Gemini Raw:\n$translated');
+
                                                       _translating[msg.id] =
                                                           false;
                                                     });

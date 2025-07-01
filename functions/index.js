@@ -61,7 +61,19 @@ exports.translateWithGemini = onCall(
       return { reply: "❗ Invalid input text." };
     }
 
-    const prompt = `Translate the following text to ${targetLang}:\n\n"${text}"`;
+    const prompt = `
+Translate the word or sentence below into ${targetLang}, and format the result like this:
+
+ <meaning 1> or <meaning 2> or<if it has more meaning>(Language name)
+ just give one line answer that is meaning , no original text
+
+Example:
+Hi or Bye (Hungarian)
+
+Now translate this:
+"${text}"
+`;
+
 
     try {
       const model = genAI.getGenerativeModel({ model: MODEL_NAME });
