@@ -502,33 +502,42 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                                 .map((entry) {
                                               final isMine =
                                                   entry.key == userReaction;
-                                              return Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: isMine
-                                                      ? Colors.blue.shade100
-                                                      : Colors.grey.shade300,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  border: isMine
-                                                      ? Border.all(
-                                                          color: Colors.blue,
-                                                          width: 1)
-                                                      : null,
-                                                ),
-                                                child: Text(
-                                                  '${entry.key} ${entry.value}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: isMine
-                                                        ? FontWeight.bold
-                                                        : FontWeight.normal,
+                                              return GestureDetector(
+                                                onTap: isMine
+                                                    ? () => _updateReaction(
+                                                        msg.id,
+                                                        currentUserId!,
+                                                        entry.key)
+                                                    : null,
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
+                                                  decoration: BoxDecoration(
                                                     color: isMine
-                                                        ? Colors.blueAccent
-                                                        : Colors.black,
+                                                        ? Colors.blue.shade100
+                                                        : Colors.grey.shade300,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                    border: isMine
+                                                        ? Border.all(
+                                                            color: Colors.blue,
+                                                            width: 1)
+                                                        : null,
+                                                  ),
+                                                  child: Text(
+                                                    '${entry.key} ${entry.value}',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight: isMine
+                                                          ? FontWeight.bold
+                                                          : FontWeight.normal,
+                                                      color: isMine
+                                                          ? Colors.blueAccent
+                                                          : Colors.black,
+                                                    ),
                                                   ),
                                                 ),
                                               );
