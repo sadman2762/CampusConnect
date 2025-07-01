@@ -372,9 +372,6 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                     Text(text,
                                         style: const TextStyle(fontSize: 16)),
                                   const SizedBox(height: 4),
-                                  Text(timeText,
-                                      style: const TextStyle(
-                                          fontSize: 10, color: Colors.grey)),
                                   if (isMe)
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -397,6 +394,12 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                           ),
                                         ],
                                       ],
+                                    )
+                                  else
+                                    Text(
+                                      timeText,
+                                      style: const TextStyle(
+                                          fontSize: 10, color: Colors.grey),
                                     )
                                 ],
                               ),
