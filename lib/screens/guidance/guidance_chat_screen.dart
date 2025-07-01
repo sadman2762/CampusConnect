@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 
 import '../../../services/chat_service.dart';
@@ -103,6 +104,45 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     );
 
     _controller.clear();
+  }
+
+  void _showReactionPicker(BuildContext context, String messageId) async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    final selectedReaction = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("React to message"),
+        content: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: ['👍', '❤️', '😂', '😮', '😢', '😡'].map((emoji) {
+            return GestureDetector(
+              onTap: () => Navigator.pop(context, emoji),
+              child: Text(emoji, style: const TextStyle(fontSize: 24)),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+
+    if (selectedReaction != null) {
+      await _updateReaction(messageId, userId, selectedReaction);
+    }
+  }
+
+  Future<void> _updateReaction(
+      String messageId, String userId, String emoji) async {
+    if (_chatId == null) return;
+
+    final messageRef = FirebaseFirestore.instance
+        .collection('guidance_chats')
+        .doc(_chatId!)
+        .collection('messages')
+        .doc(messageId);
+
+    await messageRef.set({
+      'reactions': {userId: emoji}
+    }, SetOptions(merge: true));
   }
 
   Future<void> _toggleRecording() async {
@@ -344,64 +384,88 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                               ? DateFormat('hh:mm a').format(timestamp.toDate())
                               : '';
 
-                          return Align(
-                            alignment: isMe
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isMe
-                                    ? Colors.blue.shade100
-                                    : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isMe
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  if (isImage)
-                                    _buildImageMessage(text)
-                                  else if (isFile)
-                                    _buildFileMessage(text)
-                                  else if (isAudio)
-                                    _buildAudioMessage(text)
-                                  else
-                                    Text(text,
-                                        style: const TextStyle(fontSize: 16)),
-                                  const SizedBox(height: 4),
-                                  if (isMe)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          timeText,
-                                          style: const TextStyle(
-                                              fontSize: 10, color: Colors.grey),
-                                        ),
-                                        if (isMe) ...[
-                                          const SizedBox(width: 4),
-                                          Icon(
-                                            seenList.length >= 1
-                                                ? Icons.done_all
-                                                : Icons.check,
-                                            size: 14,
-                                            color: seenList.length >= 1
-                                                ? Colors.blue
-                                                : Colors.grey,
+                          return GestureDetector(
+                            onTap: kIsWeb
+                                ? () => _showReactionPicker(context, msg.id)
+                                : null,
+                            onLongPress: !kIsWeb
+                                ? () => _showReactionPicker(context, msg.id)
+                                : null,
+                            child: Align(
+                              alignment: isMe
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: isMe
+                                      ? Colors.blue.shade100
+                                      : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: isMe
+                                      ? CrossAxisAlignment.end
+                                      : CrossAxisAlignment.start,
+                                  children: [
+                                    if (isImage)
+                                      _buildImageMessage(text)
+                                    else if (isFile)
+                                      _buildFileMessage(text)
+                                    else if (isAudio)
+                                      _buildAudioMessage(text)
+                                    else
+                                      Text(text,
+                                          style: const TextStyle(fontSize: 16)),
+                                    const SizedBox(height: 4),
+                                    if (isMe)
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            timeText,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey),
                                           ),
+                                          if (isMe) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              seenList.length >= 1
+                                                  ? Icons.done_all
+                                                  : Icons.check,
+                                              size: 14,
+                                              color: seenList.length >= 1
+                                                  ? Colors.blue
+                                                  : Colors.grey,
+                                            ),
+                                          ],
                                         ],
-                                      ],
-                                    )
-                                  else
-                                    Text(
-                                      timeText,
-                                      style: const TextStyle(
-                                          fontSize: 10, color: Colors.grey),
-                                    )
-                                ],
+                                      )
+                                    else
+                                      Text(
+                                        timeText,
+                                        style: const TextStyle(
+                                            fontSize: 10, color: Colors.grey),
+                                      ),
+                                    if (data['reactions'] != null &&
+                                        (data['reactions'] as Map).isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Wrap(
+                                          spacing: 6,
+                                          children: (data['reactions']
+                                                  as Map<String, dynamic>)
+                                              .entries
+                                              .map((entry) => Text(entry.value,
+                                                  style: const TextStyle(
+                                                      fontSize: 18)))
+                                              .toList(),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
                           );

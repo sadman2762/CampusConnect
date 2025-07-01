@@ -39,6 +39,7 @@ class ChatService {
       'senderId': senderId,
       'timestamp': FieldValue.serverTimestamp(), // ✅ Added timestamp
       'seenBy': [], // 👁️ added here
+      'reactions': {}, // 👈 initialize empty map for reactions
     });
   }
 
