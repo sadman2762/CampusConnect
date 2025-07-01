@@ -38,6 +38,7 @@ class ChatService {
       'text': text,
       'senderId': senderId,
       'timestamp': FieldValue.serverTimestamp(), // ✅ Added timestamp
+      'seenBy': [], // 👁️ added here
     });
   }
 

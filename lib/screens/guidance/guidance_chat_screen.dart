@@ -293,6 +293,28 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                       }
 
                       final messages = snapshot.data!.docs;
+                      final currentUserId =
+                          FirebaseAuth.instance.currentUser?.uid;
+
+                      for (var msg in messages) {
+                        final data = msg.data() as Map<String, dynamic>;
+                        final seenList =
+                            data.containsKey('seenBy') && data['seenBy'] is List
+                                ? List<String>.from(data['seenBy'])
+                                : <String>[];
+
+                        final senderId = data['senderId'];
+
+                        if (!seenList.contains(currentUserId) &&
+                            senderId != currentUserId) {
+                          msg.reference.update({
+                            'seenBy': FieldValue.arrayUnion([currentUserId])
+                          });
+
+                          print(
+                              '✅ Marked message ${msg.id} as seen by $currentUserId');
+                        }
+                      }
 
                       return ListView.builder(
                         reverse: true,
@@ -300,14 +322,24 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                         itemCount: messages.length,
                         itemBuilder: (_, i) {
                           final msg = messages[messages.length - 1 - i];
-                          final text = msg['text'];
-                          final senderId = msg['senderId'];
-                          final isMe = senderId == myId;
+                          final data = msg.data() as Map<String, dynamic>;
+
+                          final text = data['text'];
+                          final senderId = data['senderId'];
+                          final isMe = senderId ==
+                              FirebaseAuth.instance.currentUser?.uid;
+
                           final isFile = text.startsWith('[FILE] ');
                           final isImage = text.startsWith('[IMAGE] ');
                           final isAudio = text.startsWith('[AUDIO] ');
 
-                          final timestamp = msg['timestamp'] as Timestamp?;
+                          final List<String> seenList =
+                              data.containsKey('seenBy') &&
+                                      data['seenBy'] is List
+                                  ? List<String>.from(data['seenBy'])
+                                  : <String>[];
+
+                          final timestamp = data['timestamp'] as Timestamp?;
                           final timeText = timestamp != null
                               ? DateFormat('hh:mm a').format(timestamp.toDate())
                               : '';
@@ -343,6 +375,29 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                   Text(timeText,
                                       style: const TextStyle(
                                           fontSize: 10, color: Colors.grey)),
+                                  if (isMe)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          timeText,
+                                          style: const TextStyle(
+                                              fontSize: 10, color: Colors.grey),
+                                        ),
+                                        if (isMe) ...[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            seenList.length >= 1
+                                                ? Icons.done_all
+                                                : Icons.check,
+                                            size: 14,
+                                            color: seenList.length >= 1
+                                                ? Colors.blue
+                                                : Colors.grey,
+                                          ),
+                                        ],
+                                      ],
+                                    )
                                 ],
                               ),
                             ),
