@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart';
@@ -36,10 +37,17 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>> get _messagesStream =>
       _messagesCol.orderBy('timestamp').snapshots();
 
+  /// Fetches the user's profile photo URL from Storage under user_avatars/{uid}.jpg
   Future<String> _getUserAvatar(String uid) async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
-    return snapshot.data()?['profilePic'] ?? 'assets/images/default.jpg';
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('user_avatars')
+          .child('$uid.jpg'); // ← point at user_avatars/{uid}.jpg
+      return await ref.getDownloadURL();
+    } catch (e) {
+      return 'assets/images/default.jpg'; // ← fallback asset
+    }
   }
 
   Future<void> _sendMessage() async {
