@@ -140,9 +140,20 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
         .collection('messages')
         .doc(messageId);
 
-    await messageRef.set({
-      'reactions': {userId: emoji}
-    }, SetOptions(merge: true));
+    final doc = await messageRef.get();
+    final data = doc.data();
+    if (data == null) return;
+
+    final reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
+    final currentReaction = reactions[userId];
+
+    if (currentReaction == emoji) {
+      reactions.remove(userId);
+    } else {
+      reactions[userId] = emoji;
+    }
+
+    await messageRef.update({'reactions': reactions});
   }
 
   Future<void> _toggleRecording() async {
