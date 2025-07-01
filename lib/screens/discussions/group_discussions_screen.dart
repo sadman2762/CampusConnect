@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart';
@@ -37,16 +37,22 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>> get _messagesStream =>
       _messagesCol.orderBy('timestamp').snapshots();
 
-  /// Fetches the user's profile photo URL from Storage under user_avatars/{uid}.jpg
-  Future<String> _getUserAvatar(String uid) async {
+  /// Resolve raw avatar string: if URL already, return it; else fetch from Storage
+  Future<String> _resolveAvatarUrl(String avatarPath) async {
+    if (avatarPath.startsWith('http')) {
+      return avatarPath;
+    }
+    if (avatarPath.isEmpty) {
+      return 'assets/images/default.jpg';
+    }
     try {
-      final ref = FirebaseStorage.instance
+      return await FirebaseStorage.instance
           .ref()
           .child('user_avatars')
-          .child('$uid.jpg'); // ← point at user_avatars/{uid}.jpg
-      return await ref.getDownloadURL();
+          .child(avatarPath)
+          .getDownloadURL();
     } catch (e) {
-      return 'assets/images/default.jpg'; // ← fallback asset
+      return 'assets/images/default.jpg';
     }
   }
 
@@ -54,13 +60,13 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty || _me == null) return;
     final uid = _me!.uid;
-    final avatarUrl = await _getUserAvatar(uid);
-    final now = Timestamp.now();
+    // reuse your existing _getUserAvatar logic if desired;
+    // here we store raw uid.jpg so other clients can resolve too
     await _messagesCol.add({
       'author': _myName,
-      'avatar': avatarUrl,
+      'avatar': '$uid.jpg', // store filename, not full URL
       'text': text,
-      'timestamp': now,
+      'timestamp': Timestamp.now(),
     });
     _controller.clear();
   }
@@ -154,10 +160,17 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                   const SizedBox(height: 8),
                               itemBuilder: (_, i) {
                                 final m = messages[i].data();
-                                return _MessageBubble(
-                                  author: m['author'] as String,
-                                  avatarPath: m['avatar'] as String,
-                                  text: m['text'] as String,
+                                final rawAvatar = m['avatar'] as String;
+                                return FutureBuilder<String>(
+                                  future: _resolveAvatarUrl(rawAvatar),
+                                  builder: (ctx2, urlSnap) {
+                                    final url = urlSnap.data ?? '';
+                                    return _MessageBubble(
+                                      author: m['author'] as String,
+                                      avatarPath: url, // full URL or asset
+                                      text: m['text'] as String,
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -373,7 +386,9 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
 }
 
 class _MessageBubble extends StatelessWidget {
-  final String author, avatarPath, text;
+  final String author,
+      avatarPath,
+      text; // avatarPath now always full URL or asset path
   const _MessageBubble({
     required this.author,
     required this.avatarPath,
