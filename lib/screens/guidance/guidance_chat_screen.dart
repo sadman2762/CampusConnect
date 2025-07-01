@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../../services/chat_service.dart';
 
@@ -41,6 +42,8 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
   final Map<String, String> _userNameCache = {};
+  final Map<String, String> _translatedMessages = {};
+  final Map<String, bool> _translating = {};
 
   String? _chatId;
   late Future<String> _peerAvatarUrl; // will hold resolved URL
@@ -448,11 +451,86 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                           _buildFileMessage(text)
                                         else if (isAudio)
                                           _buildAudioMessage(text)
-                                        else
+                                        else ...[
                                           Text(text,
                                               style: const TextStyle(
                                                   fontSize: 16)),
-                                        const SizedBox(height: 4),
+                                          const SizedBox(height: 6),
+
+                                          // 🌐 Translate icon + loader
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () async {
+                                                  setState(() {
+                                                    _translating[msg.id] = true;
+                                                  });
+
+                                                  try {
+                                                    final callable =
+                                                        FirebaseFunctions
+                                                            .instance
+                                                            .httpsCallable(
+                                                                'translateWithGemini');
+                                                    final result =
+                                                        await callable.call({
+                                                      'text': text,
+                                                      'targetLang':
+                                                          'English', // or make this dynamic
+                                                    });
+
+                                                    setState(() {
+                                                      _translatedMessages[
+                                                          msg.id] = result
+                                                              .data['reply'] ??
+                                                          '⚠️ No translation';
+                                                      _translating[msg.id] =
+                                                          false;
+                                                    });
+                                                  } catch (e) {
+                                                    setState(() {
+                                                      _translatedMessages[
+                                                              msg.id] =
+                                                          '⚠️ Error translating';
+                                                      _translating[msg.id] =
+                                                          false;
+                                                    });
+                                                  }
+                                                },
+                                                child: const Icon(
+                                                    Icons.language,
+                                                    size: 18),
+                                              ),
+                                              if (_translating[msg.id] == true)
+                                                const Padding(
+                                                  padding:
+                                                      EdgeInsets.only(left: 8),
+                                                  child: SizedBox(
+                                                    height: 14,
+                                                    width: 14,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                            strokeWidth: 2),
+                                                  ),
+                                                )
+                                            ],
+                                          ),
+
+                                          // 📝 Translated text below
+                                          if (_translatedMessages[msg.id] !=
+                                              null)
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 6),
+                                              child: Text(
+                                                _translatedMessages[msg.id]!,
+                                                style: const TextStyle(
+                                                    fontStyle: FontStyle.italic,
+                                                    color: Colors.black87),
+                                              ),
+                                            ),
+                                        ],
                                         if (isMe)
                                           Row(
                                             mainAxisSize: MainAxisSize.min,
@@ -563,42 +641,53 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                                                   currentUserId!,
                                                                   emoji)
                                                           : null,
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                horizontal: 6,
-                                                                vertical: 2),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: isMine
-                                                              ? Colors
-                                                                  .blue.shade100
-                                                              : Colors.grey
-                                                                  .shade300,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(12),
-                                                          border: isMine
-                                                              ? Border.all(
-                                                                  color: Colors
-                                                                      .blue,
-                                                                  width: 1)
-                                                              : null,
-                                                        ),
-                                                        child: Text(
-                                                          '$emoji $count',
-                                                          style: TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight: isMine
-                                                                ? FontWeight
-                                                                    .bold
-                                                                : FontWeight
-                                                                    .normal,
+                                                      child: AnimatedScale(
+                                                        scale: 1.0,
+                                                        duration:
+                                                            const Duration(
+                                                                milliseconds:
+                                                                    300),
+                                                        curve:
+                                                            Curves.easeOutBack,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal: 6,
+                                                                  vertical: 2),
+                                                          decoration:
+                                                              BoxDecoration(
                                                             color: isMine
-                                                                ? Colors
-                                                                    .blueAccent
-                                                                : Colors.black,
+                                                                ? Colors.blue
+                                                                    .shade100
+                                                                : Colors.grey
+                                                                    .shade300,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                            border: isMine
+                                                                ? Border.all(
+                                                                    color: Colors
+                                                                        .blue,
+                                                                    width: 1)
+                                                                : null,
+                                                          ),
+                                                          child: Text(
+                                                            '$emoji $count',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight: isMine
+                                                                  ? FontWeight
+                                                                      .bold
+                                                                  : FontWeight
+                                                                      .normal,
+                                                              color: isMine
+                                                                  ? Colors
+                                                                      .blueAccent
+                                                                  : Colors
+                                                                      .black,
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
