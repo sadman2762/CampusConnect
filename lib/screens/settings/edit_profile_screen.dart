@@ -81,7 +81,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (kIsWeb) {
             final bytes = await _pickedImage!.readAsBytes();
 
-            if (bytes.length > 500 * 1024) {
+            if (bytes.length > 3000 * 1024) {
               throw Exception(
                   'Image too large. Please use an image under 500 KB.');
             }
