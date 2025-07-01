@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 import 'package:flutter/material.dart';
 import '../../theme/theme.dart';
 import '../guidance/guidance_screen.dart';
+import '../guidance/guidance_chat_screen.dart';
 
 class StudentProfileScreen extends StatefulWidget {
   static const routeName = '/student_profile';
@@ -248,8 +249,22 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                                 Expanded(
                                   child: ElevatedButton.icon(
                                     onPressed: () {
-                                      Navigator.pushNamed(
-                                          context, GuidanceScreen.routeName);
+                                      final currentUid = FirebaseAuth
+                                          .instance.currentUser!.uid;
+                                      final peerId = widget.studentId;
+                                      final peerName = name;
+                                      // (you don’t need chatId here since the chat screen itself will compute it
+                                      // the same way your guidance_screen.dart does)
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => GuidanceChatScreen(
+                                            peerId: peerId,
+                                            peerName: peerName,
+                                          ),
+                                        ),
+                                      );
                                     },
                                     icon: const Icon(Icons.message),
                                     label: const Text("Private Message"),
