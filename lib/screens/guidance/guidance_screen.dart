@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 
 import '../profile/profile_screen.dart';
 import 'guidance_chat_screen.dart';
@@ -122,6 +123,21 @@ class _GuidanceScreenState extends State<GuidanceScreen>
     return months[month];
   }
 
+  /// Resolves a raw filename or URL to a full avatar URL.
+  Future<String> _resolveAvatarUrl(String raw) async {
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http')) return raw;
+    try {
+      return await FirebaseStorage.instance
+          .ref()
+          .child('user_avatars')
+          .child(raw)
+          .getDownloadURL();
+    } catch (_) {
+      return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -199,6 +215,7 @@ class _GuidanceScreenState extends State<GuidanceScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
+                  // --- Chats Tab ---
                   StreamBuilder<List<QueryDocumentSnapshot>>(
                     stream: _getRegisteredUsers(),
                     builder: (context, snapshot) {
@@ -215,12 +232,12 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                         itemCount: users.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 12),
                         itemBuilder: (_, i) {
-                          final user = users[i];
-                          final uid = user.id;
-                          final email = user['email'] ?? 'unknown@email.com';
+                          final userDoc = users[i];
+                          final uid = userDoc.id;
+                          final email = userDoc['email'] ?? 'unknown@email.com';
                           final name = email.split('@')[0];
-                          final data = user.data() as Map<String, dynamic>;
-                          final avatar = data['photoURL'];
+                          final data = userDoc.data() as Map<String, dynamic>;
+                          final rawAvatar = data['profilePic'] as String? ?? '';
                           final chatId = _getChatId(currentUserId!, uid);
 
                           return StreamBuilder<
@@ -249,13 +266,21 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16, vertical: 12),
-                                  leading: CircleAvatar(
-                                    backgroundImage:
-                                        avatar != null && avatar.isNotEmpty
-                                            ? NetworkImage(avatar)
-                                            : const AssetImage(
-                                                    'assets/images/profile.jpg')
-                                                as ImageProvider,
+                                  leading: FutureBuilder<String>(
+                                    // ⚙️ resolve avatar
+                                    future: _resolveAvatarUrl(rawAvatar),
+                                    builder: (ctx, snap2) {
+                                      final url = snap2.data;
+                                      if (url != null && url.isNotEmpty) {
+                                        return CircleAvatar(
+                                          backgroundImage: NetworkImage(url),
+                                        );
+                                      }
+                                      return const CircleAvatar(
+                                        backgroundImage: AssetImage(
+                                            'assets/images/profile.jpg'),
+                                      );
+                                    },
                                   ),
                                   title: Row(
                                     mainAxisAlignment:
@@ -302,6 +327,8 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                       );
                     },
                   ),
+
+                  // --- Requests Tab ---
                   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: FirebaseFirestore.instance
                         .collection('connections')
@@ -337,15 +364,23 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                               }
                               final user = userSnapshot.data!.data()!;
                               final name = user['name'] ?? 'Unknown';
-                              final avatar = user['profilePic'] ?? '';
+                              final rawAvatar = user['profilePic'] ?? '';
 
                               return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: avatar.startsWith('http')
-                                      ? NetworkImage(avatar)
-                                      : const AssetImage(
-                                              'assets/images/profile.jpg')
-                                          as ImageProvider,
+                                leading: FutureBuilder<String>(
+                                  // ⚙️ resolve avatar
+                                  future: _resolveAvatarUrl(rawAvatar),
+                                  builder: (ctx, snap3) {
+                                    final url = snap3.data;
+                                    if (url != null && url.isNotEmpty) {
+                                      return CircleAvatar(
+                                        backgroundImage: NetworkImage(url),
+                                      );
+                                    }
+                                    return const CircleAvatar(
+                                        backgroundImage: AssetImage(
+                                            'assets/images/profile.jpg'));
+                                  },
                                 ),
                                 title: Text(name),
                                 subtitle:
