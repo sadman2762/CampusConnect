@@ -40,6 +40,7 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   final ImagePicker _picker = ImagePicker(); // 📸 image picker
   final AudioRecorder _audioRecorder = AudioRecorder();
   bool _isRecording = false;
+  final Map<String, String> _userNameCache = {};
 
   String? _chatId;
   late Future<String> _peerAvatarUrl; // will hold resolved URL
@@ -61,6 +62,22 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     if (myId == null) return;
     final chatId = _getChatId(myId, widget.peerId);
     setState(() => _chatId = chatId);
+  }
+
+  Future<String> _getUserName(String uid) async {
+    if (_userNameCache.containsKey(uid)) {
+      return _userNameCache[uid]!;
+    }
+
+    try {
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      final name = doc.data()?['name'] ?? uid;
+      _userNameCache[uid] = name;
+      return name;
+    } catch (e) {
+      return uid;
+    }
   }
 
   /// Fetches the raw avatar filename from Firestore and resolves URL
@@ -495,51 +512,99 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                             emojiCounts[emoji] =
                                                 (emojiCounts[emoji] ?? 0) + 1;
                                           }
+                                          final Map<String, List<String>>
+                                              emojiUserMap = {};
+
+                                          for (final entry
+                                              in reactions.entries) {
+                                            final uid = entry.key;
+                                            final emoji = entry.value;
+
+                                            emojiUserMap
+                                                .putIfAbsent(emoji, () => [])
+                                                .add(uid);
+                                          }
 
                                           return Wrap(
                                             spacing: 4,
                                             children: emojiCounts.entries
                                                 .map((entry) {
+                                              final emoji = entry.key;
+                                              final count = entry.value;
+                                              final userIds =
+                                                  emojiUserMap[emoji] ?? [];
                                               final isMine =
-                                                  entry.key == userReaction;
-                                              return GestureDetector(
-                                                onTap: isMine
-                                                    ? () => _updateReaction(
-                                                        msg.id,
-                                                        currentUserId!,
-                                                        entry.key)
-                                                    : null,
-                                                child: Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: isMine
-                                                        ? Colors.blue.shade100
-                                                        : Colors.grey.shade300,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                    border: isMine
-                                                        ? Border.all(
-                                                            color: Colors.blue,
-                                                            width: 1)
-                                                        : null,
-                                                  ),
-                                                  child: Text(
-                                                    '${entry.key} ${entry.value}',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      fontWeight: isMine
-                                                          ? FontWeight.bold
-                                                          : FontWeight.normal,
-                                                      color: isMine
-                                                          ? Colors.blueAccent
-                                                          : Colors.black,
+                                                  emoji == userReaction;
+
+                                              return FutureBuilder<
+                                                  List<String>>(
+                                                future: Future.wait(
+                                                    userIds.map((uid) async {
+                                                  if (uid == currentUserId)
+                                                    return 'You';
+                                                  return await _getUserName(
+                                                      uid); // 👈 real name fetch
+                                                })),
+                                                builder: (context, snapshot) {
+                                                  final tooltipText =
+                                                      snapshot.hasData
+                                                          ? snapshot.data!
+                                                              .join(', ')
+                                                          : userIds.join(
+                                                              ', '); // fallback
+
+                                                  return Tooltip(
+                                                    message: tooltipText,
+                                                    child: GestureDetector(
+                                                      onTap: isMine
+                                                          ? () =>
+                                                              _updateReaction(
+                                                                  msg.id,
+                                                                  currentUserId!,
+                                                                  emoji)
+                                                          : null,
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 6,
+                                                                vertical: 2),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: isMine
+                                                              ? Colors
+                                                                  .blue.shade100
+                                                              : Colors.grey
+                                                                  .shade300,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                          border: isMine
+                                                              ? Border.all(
+                                                                  color: Colors
+                                                                      .blue,
+                                                                  width: 1)
+                                                              : null,
+                                                        ),
+                                                        child: Text(
+                                                          '$emoji $count',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight: isMine
+                                                                ? FontWeight
+                                                                    .bold
+                                                                : FontWeight
+                                                                    .normal,
+                                                            color: isMine
+                                                                ? Colors
+                                                                    .blueAccent
+                                                                : Colors.black,
+                                                          ),
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
-                                                ),
+                                                  );
+                                                },
                                               );
                                             }).toList(),
                                           );
