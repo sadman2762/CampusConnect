@@ -406,77 +406,138 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                               alignment: isMe
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 4),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isMe
-                                      ? Colors.blue.shade100
-                                      : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: isMe
-                                      ? CrossAxisAlignment.end
-                                      : CrossAxisAlignment.start,
-                                  children: [
-                                    if (isImage)
-                                      _buildImageMessage(text)
-                                    else if (isFile)
-                                      _buildFileMessage(text)
-                                    else if (isAudio)
-                                      _buildAudioMessage(text)
-                                    else
-                                      Text(text,
-                                          style: const TextStyle(fontSize: 16)),
-                                    const SizedBox(height: 4),
-                                    if (isMe)
-                                      Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  // 🟦 Message bubble
+                                  Container(
+                                    margin:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isMe
+                                          ? Colors.blue.shade100
+                                          : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: isMe
+                                          ? CrossAxisAlignment.end
+                                          : CrossAxisAlignment.start,
+                                      children: [
+                                        if (isImage)
+                                          _buildImageMessage(text)
+                                        else if (isFile)
+                                          _buildFileMessage(text)
+                                        else if (isAudio)
+                                          _buildAudioMessage(text)
+                                        else
+                                          Text(text,
+                                              style: const TextStyle(
+                                                  fontSize: 16)),
+                                        const SizedBox(height: 4),
+                                        if (isMe)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                timeText,
+                                                style: const TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                seenList.length >= 1
+                                                    ? Icons.done_all
+                                                    : Icons.check,
+                                                size: 14,
+                                                color: seenList.length >= 1
+                                                    ? Colors.blue
+                                                    : Colors.grey,
+                                              ),
+                                            ],
+                                          )
+                                        else
                                           Text(
                                             timeText,
                                             style: const TextStyle(
                                                 fontSize: 10,
                                                 color: Colors.grey),
                                           ),
-                                          if (isMe) ...[
-                                            const SizedBox(width: 4),
-                                            Icon(
-                                              seenList.length >= 1
-                                                  ? Icons.done_all
-                                                  : Icons.check,
-                                              size: 14,
-                                              color: seenList.length >= 1
-                                                  ? Colors.blue
-                                                  : Colors.grey,
-                                            ),
-                                          ],
-                                        ],
-                                      )
-                                    else
-                                      Text(
-                                        timeText,
-                                        style: const TextStyle(
-                                            fontSize: 10, color: Colors.grey),
+                                      ],
+                                    ),
+                                  ),
+
+                                  // 🟨 Reactions bubble (WhatsApp-style)
+                                  if (data['reactions'] != null &&
+                                      data['reactions']
+                                          is Map<String, dynamic> &&
+                                      data['reactions'].isNotEmpty)
+                                    Positioned(
+                                      bottom: -10,
+                                      right: isMe ? 0 : null,
+                                      left: isMe ? null : 0,
+                                      child: Builder(
+                                        builder: (context) {
+                                          final reactions =
+                                              Map<String, dynamic>.from(
+                                                  data['reactions']);
+                                          final Map<String, int> emojiCounts =
+                                              {};
+                                          final currentUserId = FirebaseAuth
+                                              .instance.currentUser?.uid;
+                                          final userReaction =
+                                              reactions[currentUserId];
+
+                                          for (final emoji
+                                              in reactions.values) {
+                                            emojiCounts[emoji] =
+                                                (emojiCounts[emoji] ?? 0) + 1;
+                                          }
+
+                                          return Wrap(
+                                            spacing: 4,
+                                            children: emojiCounts.entries
+                                                .map((entry) {
+                                              final isMine =
+                                                  entry.key == userReaction;
+                                              return Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isMine
+                                                      ? Colors.blue.shade100
+                                                      : Colors.grey.shade300,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: isMine
+                                                      ? Border.all(
+                                                          color: Colors.blue,
+                                                          width: 1)
+                                                      : null,
+                                                ),
+                                                child: Text(
+                                                  '${entry.key} ${entry.value}',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: isMine
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                    color: isMine
+                                                        ? Colors.blueAccent
+                                                        : Colors.black,
+                                                  ),
+                                                ),
+                                              );
+                                            }).toList(),
+                                          );
+                                        },
                                       ),
-                                    if (data['reactions'] != null &&
-                                        (data['reactions'] as Map).isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Wrap(
-                                          spacing: 6,
-                                          children: (data['reactions']
-                                                  as Map<String, dynamic>)
-                                              .entries
-                                              .map((entry) => Text(entry.value,
-                                                  style: const TextStyle(
-                                                      fontSize: 18)))
-                                              .toList(),
-                                        ),
-                                      ),
-                                  ],
-                                ),
+                                    ),
+                                ],
                               ),
                             ),
                           );
