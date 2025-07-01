@@ -1,8 +1,10 @@
+// lib/screens/discussions/guidance_chat_screen.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
@@ -12,14 +14,13 @@ import '../../../services/chat_service.dart';
 class GuidanceChatScreen extends StatefulWidget {
   final String peerId;
   final String peerName;
-  final String? peerAvatar;
+  // remove peerAvatar parameter, we'll fetch from Firestore
   static const routeName = '/guidance_chat';
 
   const GuidanceChatScreen({
     Key? key,
     required this.peerId,
     required this.peerName,
-    this.peerAvatar,
   }) : super(key: key);
 
   @override
@@ -30,11 +31,13 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   final _chatService = ChatService();
   final _controller = TextEditingController();
   String? _chatId;
+  late Future<String> _peerAvatarUrl; // will hold resolved URL
 
   @override
   void initState() {
     super.initState();
     _initChat();
+    _peerAvatarUrl = _loadPeerAvatar(); // fetch on init
   }
 
   String _getChatId(String uid1, String uid2) {
@@ -47,6 +50,35 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     if (myId == null) return;
     final chatId = _getChatId(myId, widget.peerId);
     setState(() => _chatId = chatId);
+  }
+
+  /// Fetches the raw avatar filename from Firestore and resolves URL
+  Future<String> _loadPeerAvatar() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.peerId)
+          .get();
+      final raw = doc.data()?['profilePic'] as String? ?? '';
+      return _resolveAvatarUrl(raw);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// If [raw] is a full URL, returns it; if filename, fetches from Storage
+  Future<String> _resolveAvatarUrl(String raw) async {
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http')) return raw;
+    try {
+      return await FirebaseStorage.instance
+          .ref()
+          .child('user_avatars')
+          .child(raw)
+          .getDownloadURL();
+    } catch (_) {
+      return '';
+    }
   }
 
   void _sendMessage() async {
@@ -94,10 +126,26 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            if (widget.peerAvatar != null)
-              CircleAvatar(backgroundImage: AssetImage(widget.peerAvatar!))
-            else
-              const CircleAvatar(child: Icon(Icons.person)),
+            FutureBuilder<String>(
+              // load & show peer avatar
+              future: _peerAvatarUrl,
+              builder: (ctx, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const CircleAvatar(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
+                }
+                final url = snap.data;
+                if (url != null && url.isNotEmpty) {
+                  return CircleAvatar(
+                    backgroundImage: NetworkImage(url),
+                  );
+                }
+                return const CircleAvatar(
+                  child: Icon(Icons.person),
+                );
+              },
+            ),
             const SizedBox(width: 12),
             Text(widget.peerName),
           ],

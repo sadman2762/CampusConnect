@@ -290,7 +290,6 @@ class _GuidanceScreenState extends State<GuidanceScreen>
                                         builder: (_) => GuidanceChatScreen(
                                           peerId: uid,
                                           peerName: name,
-                                          peerAvatar: avatar,
                                         ),
                                       ),
                                     );
