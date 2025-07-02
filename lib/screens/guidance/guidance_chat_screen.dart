@@ -48,6 +48,8 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   String? _hoveredMessageId;
   String? _editingMessageId;
   final Map<String, TextEditingController> _editControllers = {};
+  bool isSearching = false;
+  String searchKeyword = '';
 
   String? _chatId;
   late Future<String> _peerAvatarUrl; // will hold resolved URL
@@ -462,32 +464,60 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            FutureBuilder<String>(
-              // load & show peer avatar
-              future: _peerAvatarUrl,
-              builder: (ctx, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
-                  return const CircleAvatar(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  );
-                }
-                final url = snap.data;
-                if (url != null && url.isNotEmpty) {
-                  return CircleAvatar(
-                    backgroundImage: NetworkImage(url),
-                  );
-                }
-                return const CircleAvatar(
-                  child: Icon(Icons.person),
-                );
-              },
-            ),
-            const SizedBox(width: 12),
-            Text(widget.peerName),
-          ],
-        ),
+        title: isSearching
+            ? TextField(
+                decoration: const InputDecoration(
+                  hintText: 'Search messages...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.white70),
+                ),
+                style: const TextStyle(color: Colors.white),
+                autofocus: true,
+                onChanged: (value) {
+                  setState(() => searchKeyword = value);
+                },
+              )
+            : Row(
+                children: [
+                  FutureBuilder<String>(
+                    // load & show peer avatar
+                    future: _peerAvatarUrl,
+                    builder: (ctx, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const CircleAvatar(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        );
+                      }
+                      final url = snap.data;
+                      if (url != null && url.isNotEmpty) {
+                        return CircleAvatar(
+                          backgroundImage: NetworkImage(url),
+                        );
+                      }
+                      return const CircleAvatar(
+                        child: Icon(Icons.person),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 12),
+                  Text(widget.peerName),
+                ],
+              ),
+        actions: [
+          IconButton(
+            icon: Icon(isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                isSearching = !isSearching;
+                searchKeyword = '';
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () {},
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -495,7 +525,15 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
             child: _chatId == null
                 ? const Center(child: CircularProgressIndicator())
                 : StreamBuilder<QuerySnapshot>(
-                    stream: _chatService.getMessagesStream(_chatId!),
+                    stream: (searchKeyword.isEmpty)
+                        ? _chatService.getMessagesStream(_chatId!)
+                        : FirebaseFirestore.instance
+                            .collection('guidance_chats')
+                            .doc(_chatId!)
+                            .collection('messages')
+                            .orderBy('text')
+                            .startAt([searchKeyword]).endAt(
+                                ['$searchKeyword\uf8ff']).snapshots(),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
