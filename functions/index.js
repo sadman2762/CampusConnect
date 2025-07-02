@@ -90,3 +90,90 @@ Now translate this:
     }
   }
 );
+// 1) Admin SDK
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+// 2) v2 triggers
+const { onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { onSchedule }      = require('firebase-functions/v2/scheduler');
+////////////////////////////////////////////////////////////////////////////////
+// 3) Enqueue AFTER seen (v2 onDocumentUpdated)
+//    Fires only when someone new is added to `seenBy` on a secret message
+////////////////////////////////////////////////////////////////////////////////
+exports.enqueueOnSeen = onDocumentUpdated(
+  {
+    region:   'us-central1',
+    document: 'guidance_chats/{chatId}/messages/{msgId}',
+  },
+  async (event) => {
+    const path = event.ref.path;
+    console.log('enqueueOnSeen fired for', path);
+
+    const before = event.data.before.data() || {};
+    const after  = event.data.after.data()  || {};
+    console.log('  seenBefore:', before.seenBy, 'seenAfter:', after.seenBy);
+
+    // only secret‐mode messages
+    if (!after.isSecret) {
+      console.log('  skipping: not secret');
+      return;
+    }
+
+    // if no new viewer, skip
+    const seenBefore = Array.isArray(before.seenBy) ? before.seenBy : [];
+    const seenAfter  = Array.isArray(after.seenBy)  ? after.seenBy  : [];
+    if (seenAfter.length <= seenBefore.length) {
+      console.log('  skipping: no new viewer');
+      return;
+    }
+
+    // schedule deletion
+    const delaySec = after.selfDestructAfterSeconds || 30;
+    const deleteAt = Date.now() + delaySec * 1000;
+    console.log(`  scheduling delete in ${delaySec}s (@ ${deleteAt})`);
+
+    await admin
+      .firestore()
+      .collection('deletionQueue')
+      .add({ path, deleteAt });
+
+    console.log('  queued deletion for', path);
+  }
+);
+
+////////////////////////////////////////////////////////////////////////////////
+// 4) Sweep queue every minute (v2 onSchedule)
+//    Deletes both the original message and its queue entry
+////////////////////////////////////////////////////////////////////////////////
+exports.processDeletionQueue = onSchedule(
+  {
+    region:   'us-central1',
+    schedule: 'every 1 minutes',
+  },
+  async () => {
+    const now = Date.now();
+    const db  = admin.firestore();
+
+    const snap = await db
+      .collection('deletionQueue')
+      .where('deleteAt', '<=', now)
+      .get();
+
+    if (snap.empty) {
+      console.log('processDeletionQueue: nothing to do');
+      return;
+    }
+
+    const batch = db.batch();
+    snap.docs.forEach(doc => {
+      const { path } = doc.data();
+      console.log('processDeletionQueue: deleting', path);
+      batch.delete(db.doc(path));  // remove the secret message
+      batch.delete(doc.ref);       // remove the queue record
+    });
+
+    await batch.commit();
+    console.log('processDeletionQueue: batch committed');
+  }
+);

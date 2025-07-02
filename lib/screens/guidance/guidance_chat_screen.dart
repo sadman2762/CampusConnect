@@ -45,6 +45,9 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   final Map<String, String> _userNameCache = {};
   final Map<String, String> _translatedMessages = {};
   final Map<String, bool> _translating = {};
+  String? _hoveredMessageId;
+  String? _editingMessageId;
+  final Map<String, TextEditingController> _editControllers = {};
 
   String? _chatId;
   late Future<String> _peerAvatarUrl; // will hold resolved URL
@@ -53,7 +56,24 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
   void initState() {
     super.initState();
     _initChat();
-    _peerAvatarUrl = _loadPeerAvatar(); // fetch on init
+    _peerAvatarUrl = _loadPeerAvatar();
+
+    // Listen once and mark seen exactly once per message
+    _chatService.getMessagesStream(_chatId!).listen((snapshot) {
+      final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      for (var msg in snapshot.docs) {
+        final data = msg.data() as Map<String, dynamic>;
+        final seenList = (data['seenBy'] as List?)?.cast<String>() ?? [];
+        final senderId = data['senderId'] as String?;
+        if (currentUserId != null &&
+            senderId != currentUserId &&
+            !seenList.contains(currentUserId)) {
+          msg.reference.update({
+            'seenBy': FieldValue.arrayUnion([currentUserId])
+          });
+        }
+      }
+    });
   }
 
   String _getChatId(String uid1, String uid2) {
@@ -176,6 +196,96 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     if (selectedReaction != null) {
       await _updateReaction(messageId, userId, selectedReaction);
     }
+  }
+
+  /// Shows a context menu anchored to the message bubble.
+  /// Now takes the message’s current text so “Edit” can prefill the editor.
+  void _openMessageMenu(
+    BuildContext context,
+    String messageId,
+    bool isMe,
+    String currentText, // ← new parameter
+  ) {
+    final RenderBox overlay =
+        Overlay.of(context)!.context.findRenderObject() as RenderBox;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        100, 100, // you can tweak these to better anchor at the button
+        0,
+        0,
+      ),
+      items: [
+        const PopupMenuItem(value: 'reaction', child: Text('Add Reaction')),
+        if (isMe) const PopupMenuItem(value: 'edit', child: Text('Edit')),
+        if (isMe) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+      ],
+    ).then((value) {
+      switch (value) {
+        case 'reaction':
+          _showReactionPicker(context, messageId);
+          break;
+        case 'edit':
+          _enterEditMode(messageId, currentText); // ← now passing the text
+          break;
+        case 'delete':
+          _confirmDeletion(messageId);
+          break;
+      }
+    });
+  }
+
+  Future<void> _confirmDeletion(String messageId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text('Are you sure you want to delete this message?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      FirebaseFirestore.instance
+          .collection('guidance_chats')
+          .doc(_chatId)
+          .collection('messages')
+          .doc(messageId)
+          .delete();
+    }
+  }
+
+  void _enterEditMode(String messageId, String currentText) {
+    _editControllers[messageId] = TextEditingController(text: currentText);
+    setState(() => _editingMessageId = messageId);
+  }
+
+  Future<void> _saveEdit(String messageId) async {
+    final controller = _editControllers[messageId];
+    if (controller == null) return;
+    final newText = controller.text.trim();
+    if (newText.isNotEmpty && _chatId != null) {
+      await FirebaseFirestore.instance
+          .collection('guidance_chats')
+          .doc(_chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'text': newText});
+    }
+    _cancelEdit(messageId);
+  }
+
+  void _cancelEdit(String messageId) {
+    _editControllers[messageId]?.dispose();
+    _editControllers.remove(messageId);
+    setState(() => _editingMessageId = null);
   }
 
   Future<void> _updateReaction(
@@ -392,28 +502,6 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                       }
 
                       final messages = snapshot.data!.docs;
-                      final currentUserId =
-                          FirebaseAuth.instance.currentUser?.uid;
-
-                      for (var msg in messages) {
-                        final data = msg.data() as Map<String, dynamic>;
-                        final seenList =
-                            data.containsKey('seenBy') && data['seenBy'] is List
-                                ? List<String>.from(data['seenBy'])
-                                : <String>[];
-
-                        final senderId = data['senderId'];
-
-                        if (!seenList.contains(currentUserId) &&
-                            senderId != currentUserId) {
-                          msg.reference.update({
-                            'seenBy': FieldValue.arrayUnion([currentUserId])
-                          });
-
-                          print(
-                              '✅ Marked message ${msg.id} as seen by $currentUserId');
-                        }
-                      }
 
                       return ListView.builder(
                         reverse: true,
@@ -454,304 +542,435 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                               alignment: isMe
                                   ? Alignment.centerRight
                                   : Alignment.centerLeft,
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  // 🟦 Message bubble
-                                  Container(
-                                    margin:
-                                        const EdgeInsets.symmetric(vertical: 4),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: isMe
-                                          ? Colors.blue.shade100
-                                          : Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment: isMe
-                                          ? CrossAxisAlignment.end
-                                          : CrossAxisAlignment.start,
-                                      children: [
-                                        if (isImage)
-                                          _buildImageMessage(text)
-                                        else if (isFile)
-                                          _buildFileMessage(text)
-                                        else if (isAudio)
-                                          _buildAudioMessage(text)
-                                        else ...[
-                                          MarkdownBody(
-                                            data: cleanMarkdown(text),
-                                            styleSheet:
-                                                MarkdownStyleSheet.fromTheme(
-                                                        Theme.of(context))
-                                                    .copyWith(
-                                              p: const TextStyle(fontSize: 16),
-                                            ),
-                                            onTapLink:
-                                                (text, href, title) async {
-                                              if (href != null) {
-                                                final uri = Uri.parse(href);
-                                                if (await canLaunchUrl(uri)) {
-                                                  await launchUrl(uri,
-                                                      mode: LaunchMode
-                                                          .externalApplication);
-                                                }
+                              child: MouseRegion(
+                                onEnter: (_) =>
+                                    setState(() => _hoveredMessageId = msg.id),
+                                onExit: (_) =>
+                                    setState(() => _hoveredMessageId = null),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Leading “⋮” slot (incoming)
+                                    if (kIsWeb)
+                                      SizedBox(
+                                        width: 24,
+                                        child: Opacity(
+                                          opacity: (!isMe &&
+                                                  _hoveredMessageId == msg.id)
+                                              ? 1
+                                              : 0,
+                                          child: PopupMenuButton<String>(
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            icon: const Icon(Icons.more_vert,
+                                                size: 16),
+                                            onSelected: (v) {
+                                              if (v == 'reaction')
+                                                _showReactionPicker(
+                                                    context, msg.id);
+                                              if (v == 'edit' && isMe)
+                                                _enterEditMode(msg.id, text);
+                                              if (v == 'delete' && isMe)
+                                                _confirmDeletion(msg.id);
+                                            },
+                                            itemBuilder: (_) {
+                                              final items =
+                                                  <PopupMenuEntry<String>>[
+                                                const PopupMenuItem(
+                                                    value: 'reaction',
+                                                    child:
+                                                        Text('Add Reaction')),
+                                              ];
+                                              if (isMe) {
+                                                items.addAll([
+                                                  const PopupMenuItem(
+                                                      value: 'edit',
+                                                      child: Text('Edit')),
+                                                  const PopupMenuItem(
+                                                      value: 'delete',
+                                                      child: Text('Delete')),
+                                                ]);
                                               }
+                                              return items;
                                             },
                                           ),
+                                        ),
+                                      ),
 
-                                          // 🌐 Translate icon + loader
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
+                                    // Bubble + reactions
+                                    Stack(
+                                      clipBehavior: Clip.none,
+                                      children: [
+                                        Container(
+                                          margin: const EdgeInsets.symmetric(
+                                              vertical: 4),
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: isMe
+                                                ? Colors.blue.shade100
+                                                : Colors.grey.shade200,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: isMe
+                                                ? CrossAxisAlignment.end
+                                                : CrossAxisAlignment.start,
                                             children: [
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  setState(() {
-                                                    _translating[msg.id] = true;
-                                                  });
-
-                                                  try {
-                                                    final callable =
-                                                        FirebaseFunctions
-                                                            .instance
-                                                            .httpsCallable(
-                                                                'translateWithGemini');
-                                                    final result =
-                                                        await callable.call({
-                                                      'text': text,
-                                                      'targetLang':
-                                                          'English', // or make this dynamic
-                                                    });
-
-                                                    setState(() {
-                                                      _translatedMessages[
-                                                          msg.id] = result
-                                                              .data['reply'] ??
-                                                          '⚠️ No translation';
-                                                      // 🐞 Debug Gemini output
-                                                      final translated = result
-                                                              .data['reply'] ??
-                                                          '⚠️ No translation';
-                                                      print(
-                                                          'Gemini Raw:\n$translated');
-
-                                                      _translating[msg.id] =
-                                                          false;
-                                                    });
-                                                  } catch (e) {
-                                                    setState(() {
-                                                      _translatedMessages[
-                                                              msg.id] =
-                                                          '⚠️ Error translating';
-                                                      _translating[msg.id] =
-                                                          false;
-                                                    });
-                                                  }
-                                                },
-                                                child: const Icon(
-                                                    Icons.language,
-                                                    size: 18),
-                                              ),
-                                              if (_translating[msg.id] == true)
-                                                const Padding(
-                                                  padding:
-                                                      EdgeInsets.only(left: 8),
-                                                  child: SizedBox(
-                                                    height: 14,
-                                                    width: 14,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                            strokeWidth: 2),
+                                              if (isImage)
+                                                _buildImageMessage(text)
+                                              else if (isFile)
+                                                _buildFileMessage(text)
+                                              else if (isAudio)
+                                                _buildAudioMessage(text)
+                                              else if (_editingMessageId ==
+                                                  msg.id) ...[
+                                                // Constrain the TextField to avoid unbounded width errors
+                                                ConstrainedBox(
+                                                  constraints: BoxConstraints(
+                                                    maxWidth:
+                                                        MediaQuery.of(context)
+                                                                .size
+                                                                .width *
+                                                            0.75,
                                                   ),
-                                                )
+                                                  child: TextField(
+                                                    controller:
+                                                        _editControllers[
+                                                            msg.id],
+                                                    maxLines: null,
+                                                  ),
+                                                ),
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          _saveEdit(msg.id),
+                                                      child: const Text('Save'),
+                                                    ),
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          _cancelEdit(msg.id),
+                                                      child:
+                                                          const Text('Cancel'),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ] else ...[
+                                                MarkdownBody(
+                                                  data: cleanMarkdown(text),
+                                                  styleSheet: MarkdownStyleSheet
+                                                          .fromTheme(
+                                                              Theme.of(context))
+                                                      .copyWith(
+                                                    p: const TextStyle(
+                                                        fontSize: 16),
+                                                  ),
+                                                  onTapLink:
+                                                      (t, href, title) async {
+                                                    if (href != null &&
+                                                        await canLaunchUrl(
+                                                            Uri.parse(href))) {
+                                                      await launchUrl(
+                                                          Uri.parse(href),
+                                                          mode: LaunchMode
+                                                              .externalApplication);
+                                                    }
+                                                  },
+                                                ),
+                                                Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    GestureDetector(
+                                                      onTap: () async {
+                                                        setState(() =>
+                                                            _translating[
+                                                                msg.id] = true);
+                                                        try {
+                                                          final result =
+                                                              await FirebaseFunctions
+                                                                  .instance
+                                                                  .httpsCallable(
+                                                                      'translateWithGemini')
+                                                                  .call({
+                                                            'text': text,
+                                                            'targetLang':
+                                                                'English'
+                                                          });
+                                                          setState(() {
+                                                            _translatedMessages[
+                                                                msg.id] = result
+                                                                        .data[
+                                                                    'reply'] ??
+                                                                '⚠️ No translation';
+                                                            _translating[
+                                                                msg.id] = false;
+                                                          });
+                                                        } catch (_) {
+                                                          setState(() {
+                                                            _translatedMessages[
+                                                                    msg.id] =
+                                                                '⚠️ Error translating';
+                                                            _translating[
+                                                                msg.id] = false;
+                                                          });
+                                                        }
+                                                      },
+                                                      child: const Icon(
+                                                          Icons.language,
+                                                          size: 18),
+                                                    ),
+                                                    if (_translating[msg.id] ==
+                                                        true)
+                                                      const Padding(
+                                                        padding:
+                                                            EdgeInsets.only(
+                                                                left: 8),
+                                                        child: SizedBox(
+                                                          height: 14,
+                                                          width: 14,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                  strokeWidth:
+                                                                      2),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                if (_translatedMessages[
+                                                        msg.id] !=
+                                                    null)
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            top: 6),
+                                                    child: Text(
+                                                      _translatedMessages[
+                                                          msg.id]!,
+                                                      style: const TextStyle(
+                                                        fontStyle:
+                                                            FontStyle.italic,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (isMe)
+                                                  Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Text(
+                                                        timeText,
+                                                        style: const TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors.grey),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Icon(
+                                                        seenList.length >= 1
+                                                            ? Icons.done_all
+                                                            : Icons.check,
+                                                        size: 14,
+                                                        color:
+                                                            seenList.length >= 1
+                                                                ? Colors.blue
+                                                                : Colors.grey,
+                                                      ),
+                                                    ],
+                                                  )
+                                                else
+                                                  Text(
+                                                    timeText,
+                                                    style: const TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.grey),
+                                                  ),
+                                              ],
                                             ],
                                           ),
+                                        ),
 
-                                          // 📝 Translated text below
-                                          if (_translatedMessages[msg.id] !=
-                                              null)
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.only(top: 6),
-                                              child: Text(
-                                                _translatedMessages[msg.id]!,
-                                                style: const TextStyle(
-                                                    fontStyle: FontStyle.italic,
-                                                    color: Colors.black87),
-                                              ),
+                                        // Reactions bubble
+                                        if (data['reactions']
+                                                is Map<String, dynamic> &&
+                                            (data['reactions'] as Map)
+                                                .isNotEmpty)
+                                          Positioned(
+                                            bottom: -10,
+                                            right: isMe ? 0 : null,
+                                            left: isMe ? null : 0,
+                                            child: Builder(
+                                              builder: (ctx) {
+                                                final reactions =
+                                                    Map<String, dynamic>.from(
+                                                        data['reactions']);
+                                                final Map<String, int>
+                                                    emojiCounts = {};
+                                                final currentUserId =
+                                                    FirebaseAuth.instance
+                                                        .currentUser?.uid;
+                                                final userReaction =
+                                                    reactions[currentUserId];
+                                                reactions.values.forEach((e) {
+                                                  emojiCounts[e] =
+                                                      (emojiCounts[e] ?? 0) + 1;
+                                                });
+                                                final Map<String, List<String>>
+                                                    emojiUserMap = {};
+                                                reactions.forEach((uid, e) {
+                                                  emojiUserMap
+                                                      .putIfAbsent(e, () => [])
+                                                      .add(uid);
+                                                });
+                                                return Wrap(
+                                                  spacing: 4,
+                                                  children: emojiCounts.entries
+                                                      .map((entry) {
+                                                    final emoji = entry.key;
+                                                    final count = entry.value;
+                                                    final userIds =
+                                                        emojiUserMap[emoji]!;
+                                                    final isMine =
+                                                        emoji == userReaction;
+                                                    return FutureBuilder<
+                                                        List<String>>(
+                                                      future: Future.wait(
+                                                          userIds
+                                                              .map((uid) async {
+                                                        if (uid ==
+                                                            currentUserId)
+                                                          return 'You';
+                                                        return await _getUserName(
+                                                            uid);
+                                                      })),
+                                                      builder: (c, snap) {
+                                                        final tooltipText =
+                                                            snap.hasData
+                                                                ? snap.data!
+                                                                    .join(', ')
+                                                                : userIds
+                                                                    .join(', ');
+                                                        return Tooltip(
+                                                          message: tooltipText,
+                                                          child:
+                                                              GestureDetector(
+                                                            onTap: isMine
+                                                                ? () => _updateReaction(
+                                                                    msg.id,
+                                                                    currentUserId!,
+                                                                    emoji)
+                                                                : null,
+                                                            child: Container(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .symmetric(
+                                                                      horizontal:
+                                                                          6,
+                                                                      vertical:
+                                                                          2),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: isMine
+                                                                    ? Colors
+                                                                        .blue
+                                                                        .shade100
+                                                                    : Colors
+                                                                        .grey
+                                                                        .shade300,
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            12),
+                                                                border: isMine
+                                                                    ? Border.all(
+                                                                        color: Colors
+                                                                            .blue,
+                                                                        width:
+                                                                            1)
+                                                                    : null,
+                                                              ),
+                                                              child: Text(
+                                                                '$emoji $count',
+                                                                style:
+                                                                    TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight: isMine
+                                                                      ? FontWeight
+                                                                          .bold
+                                                                      : FontWeight
+                                                                          .normal,
+                                                                  color: isMine
+                                                                      ? Colors
+                                                                          .blueAccent
+                                                                      : Colors
+                                                                          .black,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    );
+                                                  }).toList(),
+                                                );
+                                              },
                                             ),
-                                        ],
-                                        if (isMe)
-                                          Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                timeText,
-                                                style: const TextStyle(
-                                                    fontSize: 10,
-                                                    color: Colors.grey),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                seenList.length >= 1
-                                                    ? Icons.done_all
-                                                    : Icons.check,
-                                                size: 14,
-                                                color: seenList.length >= 1
-                                                    ? Colors.blue
-                                                    : Colors.grey,
-                                              ),
-                                            ],
-                                          )
-                                        else
-                                          Text(
-                                            timeText,
-                                            style: const TextStyle(
-                                                fontSize: 10,
-                                                color: Colors.grey),
                                           ),
                                       ],
                                     ),
-                                  ),
 
-                                  // 🟨 Reactions bubble (WhatsApp-style)
-                                  if (data['reactions'] != null &&
-                                      data['reactions']
-                                          is Map<String, dynamic> &&
-                                      data['reactions'].isNotEmpty)
-                                    Positioned(
-                                      bottom: -10,
-                                      right: isMe ? 0 : null,
-                                      left: isMe ? null : 0,
-                                      child: Builder(
-                                        builder: (context) {
-                                          final reactions =
-                                              Map<String, dynamic>.from(
-                                                  data['reactions']);
-                                          final Map<String, int> emojiCounts =
-                                              {};
-                                          final currentUserId = FirebaseAuth
-                                              .instance.currentUser?.uid;
-                                          final userReaction =
-                                              reactions[currentUserId];
-
-                                          for (final emoji
-                                              in reactions.values) {
-                                            emojiCounts[emoji] =
-                                                (emojiCounts[emoji] ?? 0) + 1;
-                                          }
-                                          final Map<String, List<String>>
-                                              emojiUserMap = {};
-
-                                          for (final entry
-                                              in reactions.entries) {
-                                            final uid = entry.key;
-                                            final emoji = entry.value;
-
-                                            emojiUserMap
-                                                .putIfAbsent(emoji, () => [])
-                                                .add(uid);
-                                          }
-
-                                          return Wrap(
-                                            spacing: 4,
-                                            children: emojiCounts.entries
-                                                .map((entry) {
-                                              final emoji = entry.key;
-                                              final count = entry.value;
-                                              final userIds =
-                                                  emojiUserMap[emoji] ?? [];
-                                              final isMine =
-                                                  emoji == userReaction;
-
-                                              return FutureBuilder<
-                                                  List<String>>(
-                                                future: Future.wait(
-                                                    userIds.map((uid) async {
-                                                  if (uid == currentUserId)
-                                                    return 'You';
-                                                  return await _getUserName(
-                                                      uid); // 👈 real name fetch
-                                                })),
-                                                builder: (context, snapshot) {
-                                                  final tooltipText =
-                                                      snapshot.hasData
-                                                          ? snapshot.data!
-                                                              .join(', ')
-                                                          : userIds.join(
-                                                              ', '); // fallback
-
-                                                  return Tooltip(
-                                                    message: tooltipText,
-                                                    child: GestureDetector(
-                                                      onTap: isMine
-                                                          ? () =>
-                                                              _updateReaction(
-                                                                  msg.id,
-                                                                  currentUserId!,
-                                                                  emoji)
-                                                          : null,
-                                                      child: AnimatedScale(
-                                                        scale: 1.0,
-                                                        duration:
-                                                            const Duration(
-                                                                milliseconds:
-                                                                    300),
-                                                        curve:
-                                                            Curves.easeOutBack,
-                                                        child: Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal: 6,
-                                                                  vertical: 2),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: isMine
-                                                                ? Colors.blue
-                                                                    .shade100
-                                                                : Colors.grey
-                                                                    .shade300,
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        12),
-                                                            border: isMine
-                                                                ? Border.all(
-                                                                    color: Colors
-                                                                        .blue,
-                                                                    width: 1)
-                                                                : null,
-                                                          ),
-                                                          child: Text(
-                                                            '$emoji $count',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              fontWeight: isMine
-                                                                  ? FontWeight
-                                                                      .bold
-                                                                  : FontWeight
-                                                                      .normal,
-                                                              color: isMine
-                                                                  ? Colors
-                                                                      .blueAccent
-                                                                  : Colors
-                                                                      .black,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              );
-                                            }).toList(),
-                                          );
-                                        },
+                                    // Trailing “⋮” slot (outgoing)
+                                    if (kIsWeb)
+                                      SizedBox(
+                                        width: 24,
+                                        child: Opacity(
+                                          opacity: (isMe &&
+                                                  _hoveredMessageId == msg.id)
+                                              ? 1
+                                              : 0,
+                                          child: PopupMenuButton<String>(
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            icon: const Icon(Icons.more_vert,
+                                                size: 16),
+                                            onSelected: (v) {
+                                              if (v == 'reaction')
+                                                _showReactionPicker(
+                                                    context, msg.id);
+                                              if (v == 'edit' && isMe)
+                                                _enterEditMode(msg.id, text);
+                                              if (v == 'delete' && isMe)
+                                                _confirmDeletion(msg.id);
+                                            },
+                                            itemBuilder: (_) {
+                                              final items =
+                                                  <PopupMenuEntry<String>>[
+                                                const PopupMenuItem(
+                                                    value: 'reaction',
+                                                    child:
+                                                        Text('Add Reaction')),
+                                              ];
+                                              if (isMe) {
+                                                items.addAll([
+                                                  const PopupMenuItem(
+                                                      value: 'edit',
+                                                      child: Text('Edit')),
+                                                  const PopupMenuItem(
+                                                      value: 'delete',
+                                                      child: Text('Delete')),
+                                                ]);
+                                              }
+                                              return items;
+                                            },
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           );
