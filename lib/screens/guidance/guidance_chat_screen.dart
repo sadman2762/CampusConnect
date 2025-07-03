@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'shared_media_screen.dart';
 
 import '../../../services/chat_service.dart';
 
@@ -348,20 +349,24 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
 
       final senderId = FirebaseAuth.instance.currentUser?.uid;
       if (_chatId != null && senderId != null) {
-        await _chatService.sendMessage(
-          chatId: _chatId!,
-          senderId: senderId,
-          text: '[AUDIO] $fileName\n$audioUrl',
-        );
+        await FirebaseFirestore.instance
+            .collection('guidance_chats')
+            .doc(_chatId!)
+            .collection('messages')
+            .add({
+          'type': 'image',
+          'url': audioUrl,
+          'fileName': fileName,
+          'senderId': senderId,
+          'timestamp': FieldValue.serverTimestamp(),
+          'seenBy': [],
+          'reactions': {},
+        });
       }
     }
   }
 
-  Widget _buildImageMessage(String text) {
-    final parts = text.split('\n');
-    if (parts.length != 2) return Text(text);
-    final url = parts[1];
-
+  Widget _buildImageMessage(String url) {
     return GestureDetector(
       onTap: () => _openFileUrl(url),
       child: ClipRRect(
@@ -384,10 +389,7 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     );
   }
 
-  Widget _buildAudioMessage(String text) {
-    final parts = text.split('\n');
-    if (parts.length != 2) return Text(text);
-    final url = parts[1];
+  Widget _buildAudioMessage(String url) {
     final player = AudioPlayer();
 
     return Row(
@@ -427,11 +429,19 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
 
     final senderId = FirebaseAuth.instance.currentUser?.uid;
     if (_chatId != null && senderId != null) {
-      await _chatService.sendMessage(
-        chatId: _chatId!,
-        senderId: senderId,
-        text: '[IMAGE] $fileName\n$imageUrl', // tag as image
-      );
+      await FirebaseFirestore.instance
+          .collection('guidance_chats')
+          .doc(_chatId!)
+          .collection('messages')
+          .add({
+        'type': 'image',
+        'url': imageUrl,
+        'fileName': fileName,
+        'senderId': senderId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'seenBy': [],
+        'reactions': {},
+      });
     }
   }
 
@@ -449,11 +459,19 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
 
       final senderId = FirebaseAuth.instance.currentUser?.uid;
       if (_chatId != null && senderId != null) {
-        await _chatService.sendMessage(
-          chatId: _chatId!,
-          senderId: senderId,
-          text: '[FILE] $fileName\n$fileUrl',
-        );
+        await FirebaseFirestore.instance
+            .collection('guidance_chats')
+            .doc(_chatId!)
+            .collection('messages')
+            .add({
+          'type': 'doc',
+          'url': fileUrl,
+          'fileName': fileName,
+          'senderId': senderId,
+          'timestamp': FieldValue.serverTimestamp(),
+          'seenBy': [],
+          'reactions': {},
+        });
       }
     }
   }
@@ -514,8 +532,29 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
             },
           ),
           IconButton(
+            icon: const Icon(Icons.perm_media_rounded), // 📁 Shared Media icon
+            tooltip: 'Shared Media',
+            onPressed: () {
+              if (_chatId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SharedMediaScreen(chatId: _chatId!),
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Please wait, chat is still loading...')),
+                );
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.more_vert),
-            onPressed: () {},
+            onPressed: () {
+              // You can add options here later
+            },
           ),
         ],
       ),
@@ -549,14 +588,20 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                           final msg = messages[messages.length - 1 - i];
                           final data = msg.data() as Map<String, dynamic>;
 
-                          final text = data['text'];
+                          final text = data['text'] ?? '';
                           final senderId = data['senderId'];
                           final isMe = senderId ==
                               FirebaseAuth.instance.currentUser?.uid;
 
-                          final isFile = text.startsWith('[FILE] ');
-                          final isImage = text.startsWith('[IMAGE] ');
-                          final isAudio = text.startsWith('[AUDIO] ');
+                          final type = data['type'] ?? 'text';
+                          final fileUrl = data['url'];
+                          final fileName = data['fileName'];
+                          final isImage = type == 'image';
+                          final isFile = type == 'doc';
+                          final isAudio = type == 'file' &&
+                              fileName != null &&
+                              fileName.endsWith(
+                                  '.m4a'); // or use type == 'audio' if you separated audio
 
                           final List<String> seenList =
                               data.containsKey('seenBy') &&
@@ -656,12 +701,16 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
                                                 ? CrossAxisAlignment.end
                                                 : CrossAxisAlignment.start,
                                             children: [
-                                              if (isImage)
-                                                _buildImageMessage(text)
-                                              else if (isFile)
-                                                _buildFileMessage(text)
-                                              else if (isAudio)
-                                                _buildAudioMessage(text)
+                                              if (isImage && fileUrl != null)
+                                                _buildImageMessage(fileUrl)
+                                              else if (isFile &&
+                                                  fileUrl != null &&
+                                                  fileName != null)
+                                                _buildFileMessage(
+                                                    fileName, fileUrl)
+                                              else if (isAudio &&
+                                                  fileUrl != null)
+                                                _buildAudioMessage(fileUrl)
                                               else if (_editingMessageId ==
                                                   msg.id) ...[
                                                 // Constrain the TextField to avoid unbounded width errors
@@ -1062,12 +1111,7 @@ class _GuidanceChatScreenState extends State<GuidanceChatScreen> {
     );
   }
 
-  Widget _buildFileMessage(String text) {
-    final parts = text.split('\n');
-    if (parts.length != 2) return Text(text);
-    final filename = parts[0].replaceFirst('[FILE] ', '');
-    final url = parts[1];
-
+  Widget _buildFileMessage(String filename, String url) {
     return GestureDetector(
       onTap: () => _openFileUrl(url),
       child: Row(
