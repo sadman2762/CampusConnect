@@ -254,6 +254,25 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      // ✅ New Message Search Field
+                      TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search messages...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 8),
                       Expanded(
                         child:
                             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -264,7 +283,20 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                               return const Center(
                                   child: CircularProgressIndicator());
                             }
-                            final messages = snap.data?.docs ?? [];
+                            final query = _searchController.text.toLowerCase();
+                            final allMessages = snap.data?.docs ?? [];
+
+// ✅ Apply search filter if there's a query
+                            final messages = query.isEmpty
+                                ? allMessages
+                                : allMessages.where((doc) {
+                                    final data = doc.data();
+                                    final text = (data['text'] ?? '')
+                                        .toString()
+                                        .toLowerCase();
+                                    return text.contains(query);
+                                  }).toList();
+
                             if (messages.isEmpty) {
                               return const Center(
                                   child: Text('No messages yet.'));
