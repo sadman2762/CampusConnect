@@ -142,12 +142,35 @@ class _QueriesScreenState extends State<QueriesScreen> {
                       itemBuilder: (_, i) {
                         final doc = docs[i];
                         final data = doc.data();
+// 🔄 Fetch user profile for each query (to show profilePic and author name)
+                        final authorId =
+                            data['uid']; // must be stored when query is posted
 
-                        return QueryCard(
-                          queryId: doc.id,
-                          author: data['author'] ?? 'Unknown',
-                          title: data['title'] ?? '',
-                          text: '', // ✅ remove small-text subtitle
+                        return FutureBuilder<
+                            DocumentSnapshot<Map<String, dynamic>>>(
+                          future: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(authorId)
+                              .get(),
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const SizedBox.shrink(); // or show loading
+                            }
+
+                            final userData = snapshot.data!.data();
+                            final profilePic = userData?['profilePic'] ??
+                                'https://example.com/default.jpg'; // fallback
+
+                            return QueryCard(
+                              queryId: doc.id,
+                              author: userData?['name'] ??
+                                  data['author'] ??
+                                  'Unknown',
+                              title: data['title'] ?? '',
+                              text: '',
+                              profilePicUrl: profilePic,
+                            );
+                          },
                         );
                       },
                     );

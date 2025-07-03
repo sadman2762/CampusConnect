@@ -7,6 +7,7 @@ class QueryCard extends StatefulWidget {
   final String author;
   final String title;
   final String text;
+  final String profilePicUrl;
 
   const QueryCard({
     Key? key,
@@ -14,6 +15,7 @@ class QueryCard extends StatefulWidget {
     required this.author,
     required this.title,
     required this.text,
+    required this.profilePicUrl,
   }) : super(key: key);
 
   @override
@@ -156,9 +158,19 @@ class _QueryCardState extends State<QueryCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${widget.author} posted a query',
-            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage: NetworkImage(widget.profilePicUrl),
+                backgroundColor: Colors.grey[300],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${widget.author} posted a query',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Container(
