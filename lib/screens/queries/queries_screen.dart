@@ -18,6 +18,7 @@ class _QueriesScreenState extends State<QueriesScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _newQueryController = TextEditingController();
   int _viewMy = 0;
+  String _searchKeyword = '';
 
   User? get _me => FirebaseAuth.instance.currentUser;
   String get _myUid => _me?.uid ?? '';
@@ -57,6 +58,42 @@ class _QueriesScreenState extends State<QueriesScreen> {
     _newQueryController.clear();
   }
 
+  void _openSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final _searchController = TextEditingController();
+
+        return AlertDialog(
+          title: const Text('Search Queries'),
+          content: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(hintText: 'Enter keyword...'),
+            onSubmitted: (keyword) {
+              Navigator.pop(context);
+              _filterQueries(keyword);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _filterQueries(_searchController.text.trim());
+              },
+              child: const Text('Search'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _filterQueries(String keyword) {
+    setState(() {
+      _searchKeyword = keyword.toLowerCase();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -82,9 +119,18 @@ class _QueriesScreenState extends State<QueriesScreen> {
                 controller: _newQueryController,
                 decoration: InputDecoration(
                   hintText: 'Post your question...',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.send_outlined),
-                    onPressed: _postNewQuery,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.search),
+                        onPressed: _openSearchDialog,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send_outlined),
+                        onPressed: _postNewQuery,
+                      ),
+                    ],
                   ),
                   filled: true,
                   fillColor: Colors.grey.shade200,
@@ -129,7 +175,15 @@ class _QueriesScreenState extends State<QueriesScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final docs = snap.data?.docs ?? [];
+                    final allDocs = snap.data?.docs ?? [];
+
+                    final docs = _searchKeyword.isEmpty
+                        ? allDocs
+                        : allDocs.where((doc) {
+                            final title =
+                                (doc['title'] ?? '').toString().toLowerCase();
+                            return title.contains(_searchKeyword);
+                          }).toList();
 
                     if (docs.isEmpty) {
                       return const Center(child: Text('No queries yet.'));
