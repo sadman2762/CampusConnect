@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart'; // for kIsWeb
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'shared_resources_screen.dart'; // or the correct relative path
 
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart';
@@ -74,6 +75,13 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
       'timestamp': Timestamp.now(),
     });
     _controller.clear();
+  }
+
+  Future<int> _countSharedResources() async {
+    final snap = await _messagesCol
+        .where('type', whereIn: ['image', 'file', 'doc']) // shared media types
+        .get();
+    return snap.size;
   }
 
   Future<void> _pickAndSendImage() async {
@@ -305,12 +313,60 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
-                      Text(
-                        widget.groupName,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            widget.groupName,
+                            style: textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          FutureBuilder<int>(
+                            future: _countSharedResources(),
+                            builder: (context, snapshot) {
+                              final count = snapshot.data ?? 0;
+                              return Stack(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                        Icons.folder_shared_outlined),
+                                    tooltip: 'Shared Resources',
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SharedResourcesScreen(
+                                              groupName: widget.groupName),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (count > 0)
+                                    Positioned(
+                                      right: 4,
+                                      top: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '$count',
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
                       ),
+
                       const SizedBox(height: 8),
                       // ✅ New Message Search Field
                       TextField(
