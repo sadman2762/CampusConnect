@@ -71,6 +71,32 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     _controller.clear();
   }
 
+  void _showReactionPicker(String docId) async {
+    final emoji = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('React with emoji'),
+        content: Wrap(
+          spacing: 12,
+          children: ['👍', '❤️', '😂', '🎉', '😢', '🔥'].map((e) {
+            return GestureDetector(
+              onTap: () => Navigator.pop(context, e),
+              child: Text(e, style: const TextStyle(fontSize: 24)),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+
+    if (emoji != null && _me != null) {
+      final uid = _me!.uid;
+
+      await _messagesCol.doc(docId).set({
+        'reactions': {uid: emoji}
+      }, SetOptions(merge: true)); // ✅ add/update emoji reaction for this user
+    }
+  }
+
   Future<void> _generateSummary() async {
     final snapshot = await _messagesCol.orderBy('timestamp').get();
     final docs = snapshot.docs;
@@ -165,10 +191,22 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                   future: _resolveAvatarUrl(rawAvatar),
                                   builder: (ctx2, urlSnap) {
                                     final url = urlSnap.data ?? '';
-                                    return _MessageBubble(
-                                      author: m['author'] as String,
-                                      avatarPath: url, // full URL or asset
-                                      text: m['text'] as String,
+                                    final docId = messages[i]
+                                        .id; // ✅ get Firestore doc ID
+
+                                    return GestureDetector(
+                                      onTap: () => _showReactionPicker(docId),
+                                      child: _MessageBubble(
+                                        author: m['author'] as String,
+                                        avatarPath: url,
+                                        text: m['text'] as String,
+                                        reactions: m['reactions'] != null &&
+                                                m['reactions']
+                                                    is Map<String, dynamic>
+                                            ? Map<String, dynamic>.from(
+                                                m['reactions'])
+                                            : null,
+                                      ),
                                     );
                                   },
                                 );
@@ -389,11 +427,39 @@ class _MessageBubble extends StatelessWidget {
   final String author,
       avatarPath,
       text; // avatarPath now always full URL or asset path
+  final Map<String, dynamic>? reactions; // ✅ NEW
   const _MessageBubble({
     required this.author,
     required this.avatarPath,
     required this.text,
+    this.reactions, // ✅ NEW
   });
+
+  Widget buildReactions(Map<String, dynamic>? reactionsMap) {
+    if (reactionsMap == null || reactionsMap.isEmpty) return SizedBox();
+
+    final emojiCount = <String, int>{};
+    reactionsMap.values.forEach((emoji) {
+      emojiCount[emoji] = (emojiCount[emoji] ?? 0) + 1;
+    });
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 4,
+        children: emojiCount.entries.map((entry) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('${entry.key} ${entry.value}'),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -419,6 +485,7 @@ class _MessageBubble extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(text),
+                buildReactions(reactions),
               ],
             ),
           ),
