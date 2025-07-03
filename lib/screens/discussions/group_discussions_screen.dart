@@ -7,6 +7,8 @@ import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart'; // for kIsWeb
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart';
@@ -117,6 +119,62 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
       });
     } catch (e, stack) {
       print('❌ Upload failed: $e');
+      print(stack);
+    }
+  }
+
+  // 📄 Function to pick and send document file from local storage
+  Future<void> _pickAndSendDocument() async {
+    try {
+      print('📎 Document button tapped');
+      if (_me == null) return;
+
+      final result = await FilePicker.platform.pickFiles();
+      if (result == null) {
+        print('❌ User canceled file picking');
+        return;
+      }
+
+      final picked = result.files.first;
+      print('🗂 Picked file: ${picked.name}');
+
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('group_docs')
+          .child(widget.groupName)
+          .child(fileName);
+
+      UploadTask uploadTask;
+
+      if (kIsWeb) {
+        if (picked.bytes == null) {
+          print('❌ File bytes are null on web');
+          return;
+        }
+        uploadTask = ref.putData(picked.bytes!);
+      } else {
+        final file = File(picked.path!);
+        uploadTask = ref.putFile(file);
+      }
+
+      final snapshot = await uploadTask;
+      final fileUrl = await snapshot.ref.getDownloadURL();
+      print('✅ Uploaded to: $fileUrl');
+
+      await _messagesCol.add({
+        'author': _myName,
+        'avatar': '${_me!.uid}.jpg',
+        'text': '[DOC] $fileName\n$fileUrl',
+        'timestamp': Timestamp.now(),
+        'type': 'file',
+        'url': fileUrl,
+        'fileName': fileName,
+      });
+    } catch (e, stack) {
+      print('❌ Error during document send: $e');
       print(stack);
     }
   }
@@ -366,6 +424,11 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   IconButton(
                     icon: const Icon(Icons.camera_alt_outlined),
                     onPressed: _pickAndSendImage,
+                  ),
+                  // 📎 Document picker button
+                  IconButton(
+                    icon: const Icon(Icons.attach_file),
+                    onPressed: _pickAndSendDocument, // Will define this next
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -622,7 +685,22 @@ class _MessageBubble extends StatelessWidget {
                           width: double.infinity,
                         ),
                       )
-                    : Text(text),
+                    : type == 'file' && url != null
+                        ? GestureDetector(
+                            onTap: () async {
+                              if (await canLaunchUrl(Uri.parse(url!))) {
+                                launchUrl(Uri.parse(url!));
+                              }
+                            },
+                            child: Text(
+                              '📄 $text',
+                              style: const TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                          )
+                        : Text(text),
                 buildReactions(reactions),
               ],
             ),
