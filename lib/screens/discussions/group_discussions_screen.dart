@@ -313,15 +313,31 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   padding: const EdgeInsets.all(12),
                   child: Column(
                     children: [
+                      // 🔄 Replaced title + search layout to a single row
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            widget.groupName,
-                            style: textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                hintText: 'Search messages...',
+                                prefixIcon: const Icon(Icons.search),
+                                suffixIcon: IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 0),
+                              ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           FutureBuilder<int>(
                             future: _countSharedResources(),
                             builder: (context, snapshot) {
@@ -355,8 +371,9 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         child: Text(
                                           '$count',
                                           style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12),
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -367,25 +384,6 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                         ],
                       ),
 
-                      const SizedBox(height: 8),
-                      // ✅ New Message Search Field
-                      TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search messages...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onChanged: (_) => setState(() {}),
-                      ),
                       const SizedBox(height: 8),
                       Expanded(
                         child:
