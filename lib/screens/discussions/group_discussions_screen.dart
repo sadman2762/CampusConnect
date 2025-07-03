@@ -141,20 +141,48 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     if (emoji != null && _me != null) {
       final uid = _me!.uid;
 
-      final doc = await _messagesCol.doc(docId).get();
-      final data = doc.data();
-      final Map<String, dynamic> reactions =
-          (data?['reactions'] ?? {}) as Map<String, dynamic>;
+      try {
+        final docSnap = await _messagesCol.doc(docId).get();
+        if (!docSnap.exists) {
+          print('❌ Message document not found');
+          return;
+        }
 
-      if (reactions[uid] == emoji) {
-        // ✅ Same emoji already set – remove it (unreact)
-        reactions.remove(uid);
-      } else {
-        // ✅ Set or change emoji
-        reactions[uid] = emoji;
+        final data = docSnap.data();
+        if (data == null) {
+          print('❌ Message data is null');
+          return;
+        }
+
+        final reactionsRaw = data['reactions'];
+        final Map<String, dynamic> reactions =
+            reactionsRaw is Map<String, dynamic>
+                ? Map<String, dynamic>.from(reactionsRaw)
+                : {};
+
+        print('🔄 Before: $reactions');
+
+        if (reactions[uid] == emoji) {
+          reactions.remove(uid); // unreact
+        } else {
+          reactions[uid] = emoji; // set/change
+        }
+
+        print('🔁 After: $reactions');
+
+        await _messagesCol.doc(docId).update({'reactions': reactions});
+        print('✅ Reaction saved to Firestore');
+      } catch (e, stack) {
+        print('❌ Failed to update reaction: $e');
+        print(stack);
+
+        // Optional fallback: force set if needed
+        /*
+      await _messagesCol.doc(docId).set({
+        'reactions': {uid: emoji},
+      }, SetOptions(merge: true));
+      */
       }
-
-      await _messagesCol.doc(docId).update({'reactions': reactions});
     }
   }
 
@@ -256,6 +284,8 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         .id; // ✅ get Firestore doc ID
 
                                     return GestureDetector(
+                                      behavior: HitTestBehavior
+                                          .opaque, // ✅ Ensures it registers taps
                                       onTap: () => _showReactionPicker(docId),
                                       child: _MessageBubble(
                                         author: m['author'] as String,
