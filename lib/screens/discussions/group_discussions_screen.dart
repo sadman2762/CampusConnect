@@ -383,6 +383,8 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         text: m['text'] as String,
                                         type: m['type'] as String?, // ✅ NEW
                                         url: m['url'] as String?, // ✅ NEW
+                                        fileName: m['fileName']
+                                            as String?, // 📁 pass fileName here
                                         reactions: m['reactions'] != null &&
                                                 m['reactions']
                                                     is Map<String, dynamic>
@@ -617,14 +619,27 @@ class _MessageBubble extends StatelessWidget {
       text; // avatarPath now always full URL or asset path
   final Map<String, dynamic>? reactions; // ✅ NEW
   final String? type, url; // ✅ NEW: for image support
+  final String? fileName; // 📁 NEW
   const _MessageBubble({
     required this.author,
     required this.avatarPath,
     required this.text,
     this.type,
     this.url,
+    this.fileName,
     this.reactions, // ✅ NEW
   });
+
+  String _getFileIcon(String fileName) {
+    final ext = fileName.toLowerCase();
+    if (ext.endsWith('.pdf')) return '📕';
+    if (ext.endsWith('.doc') || ext.endsWith('.docx')) return '📄';
+    if (ext.endsWith('.ppt') || ext.endsWith('.pptx')) return '📊';
+    if (ext.endsWith('.xls') || ext.endsWith('.xlsx')) return '📈';
+    if (ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png'))
+      return '🖼️';
+    return '📁';
+  }
 
   Widget buildReactions(Map<String, dynamic>? reactionsMap) {
     if (reactionsMap == null || reactionsMap.isEmpty) return SizedBox();
@@ -692,12 +707,23 @@ class _MessageBubble extends StatelessWidget {
                                 launchUrl(Uri.parse(url!));
                               }
                             },
-                            child: Text(
-                              '📄 $text',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                decoration: TextDecoration.underline,
-                              ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  _getFileIcon(fileName ?? ''),
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    fileName ?? 'Document',
+                                    style: const TextStyle(
+                                      color: Colors.blue,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           )
                         : Text(text),
