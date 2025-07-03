@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart'; // ⚙️ STORAGE FETCH
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // for kIsWeb
 
 import '../profile/profile_screen.dart';
 import 'summary_screen.dart';
@@ -69,6 +72,53 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
       'timestamp': Timestamp.now(),
     });
     _controller.clear();
+  }
+
+  Future<void> _pickAndSendImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile == null || _me == null) return;
+
+    final uid = _me!.uid;
+    final fileName =
+        '${DateTime.now().millisecondsSinceEpoch}_${pickedFile.name}';
+
+    final ref = FirebaseStorage.instance
+        .ref()
+        .child('group_images')
+        .child(widget.groupName)
+        .child(fileName);
+
+    try {
+      UploadTask uploadTask;
+
+      // ✅ Handle web vs. mobile
+      if (kIsWeb) {
+        final bytes = await pickedFile.readAsBytes();
+        uploadTask = ref.putData(bytes); // ✅ For web
+      } else {
+        final file = File(pickedFile.path);
+        uploadTask = ref.putFile(file); // ✅ For mobile
+      }
+
+      final snapshot = await uploadTask;
+      final imageUrl = await snapshot.ref.getDownloadURL();
+      print('✅ Image URL: $imageUrl');
+
+      await _messagesCol.add({
+        'author': _myName,
+        'avatar': '$uid.jpg',
+        'text': '[IMAGE] $fileName\n$imageUrl',
+        'timestamp': Timestamp.now(),
+        'type': 'image',
+        'url': imageUrl,
+        'fileName': fileName,
+      });
+    } catch (e, stack) {
+      print('❌ Upload failed: $e');
+      print(stack);
+    }
   }
 
   void _showReactionPicker(String docId) async {
@@ -211,6 +261,8 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         author: m['author'] as String,
                                         avatarPath: url,
                                         text: m['text'] as String,
+                                        type: m['type'] as String?, // ✅ NEW
+                                        url: m['url'] as String?, // ✅ NEW
                                         reactions: m['reactions'] != null &&
                                                 m['reactions']
                                                     is Map<String, dynamic>
@@ -251,7 +303,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.camera_alt_outlined),
-                    onPressed: () {},
+                    onPressed: _pickAndSendImage,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -439,10 +491,13 @@ class _MessageBubble extends StatelessWidget {
       avatarPath,
       text; // avatarPath now always full URL or asset path
   final Map<String, dynamic>? reactions; // ✅ NEW
+  final String? type, url; // ✅ NEW: for image support
   const _MessageBubble({
     required this.author,
     required this.avatarPath,
     required this.text,
+    this.type,
+    this.url,
     this.reactions, // ✅ NEW
   });
 
@@ -495,7 +550,17 @@ class _MessageBubble extends StatelessWidget {
                 Text(author,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(text),
+                type == 'image' && url != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          url!,
+                          fit: BoxFit.cover,
+                          height: 200,
+                          width: double.infinity,
+                        ),
+                      )
+                    : Text(text),
                 buildReactions(reactions),
               ],
             ),
