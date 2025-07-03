@@ -91,9 +91,20 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     if (emoji != null && _me != null) {
       final uid = _me!.uid;
 
-      await _messagesCol.doc(docId).set({
-        'reactions': {uid: emoji}
-      }, SetOptions(merge: true)); // ✅ add/update emoji reaction for this user
+      final doc = await _messagesCol.doc(docId).get();
+      final data = doc.data();
+      final Map<String, dynamic> reactions =
+          (data?['reactions'] ?? {}) as Map<String, dynamic>;
+
+      if (reactions[uid] == emoji) {
+        // ✅ Same emoji already set – remove it (unreact)
+        reactions.remove(uid);
+      } else {
+        // ✅ Set or change emoji
+        reactions[uid] = emoji;
+      }
+
+      await _messagesCol.doc(docId).update({'reactions': reactions});
     }
   }
 
