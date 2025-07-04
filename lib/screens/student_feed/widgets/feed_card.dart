@@ -130,6 +130,90 @@ class _FeedCardState extends State<FeedCard> {
     }
   }
 
+  Future<void> _showVoteHistory() async {
+    final voteMap = widget.votes ?? {};
+    if (voteMap.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _fetchVoterProfiles(voteMap),
+          builder: (ctx, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final voters = snap.data ?? [];
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: voters.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (_, i) {
+                final voter = voters[i];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: NetworkImage(voter['avatar']),
+                  ),
+                  title: Text(voter['name']),
+                  subtitle: Text(
+                    _voteLabel(voter['vote']),
+                    style: TextStyle(
+                      color: voter['vote'] == 'going'
+                          ? Colors.green
+                          : voter['vote'] == 'maybe'
+                              ? Colors.orange
+                              : Colors.red,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchVoterProfiles(Map votes) async {
+    final List<Map<String, dynamic>> results = [];
+
+    for (final entry in votes.entries) {
+      final uid = entry.key;
+      final vote = entry.value;
+
+      final userDoc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+      final data = userDoc.data() ?? {};
+      results.add({
+        'name': data['name'] ?? 'Unknown',
+        'avatar': data['profilePic'] ?? '',
+        'vote': vote,
+      });
+    }
+
+    return results;
+  }
+
+  String _voteLabel(String vote) {
+    switch (vote) {
+      case 'going':
+        return 'Going ✅';
+      case 'not_going':
+        return 'Not Going ❌';
+      case 'maybe':
+        return 'Maybe ❓';
+      default:
+        return vote;
+    }
+  }
+
   Widget _pollOption(String type, IconData icon, String label) {
     final isSelected = _myVote == type;
     final percentage = _votePercentage(type);
@@ -255,6 +339,11 @@ class _FeedCardState extends State<FeedCard> {
                   const SizedBox(height: 6),
                   _pollOption('maybe', Icons.help_outline, 'Maybe'),
                 ],
+              ),
+              TextButton.icon(
+                onPressed: _showVoteHistory,
+                icon: const Icon(Icons.people_outline),
+                label: const Text('See voters'),
               ),
             ],
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
