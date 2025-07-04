@@ -168,7 +168,11 @@ class _QueryCardState extends State<QueryCard> {
               const SizedBox(width: 8),
               Text(
                 '${widget.author} posted a query',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
