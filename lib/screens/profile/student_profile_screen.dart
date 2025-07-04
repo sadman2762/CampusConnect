@@ -86,6 +86,17 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
     }
   }
 
+  Future<int> _getAcceptedConnectionCount(String studentId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('connections')
+        .doc(studentId)
+        .collection('requests')
+        .where('status', isEqualTo: 'accepted')
+        .get();
+
+    return snapshot.size;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -296,13 +307,27 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
                     const SizedBox(height: 24),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 40),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _StatCard(label: "Projects", value: projects),
-                          _StatCard(label: "Followers", value: followers),
-                          _StatCard(label: "Reviews", value: reviews),
-                        ],
+                      child: FutureBuilder<int>(
+                        future: _getAcceptedConnectionCount(widget.studentId),
+                        builder: (context, connSnap) {
+                          final connCount = connSnap.connectionState ==
+                                  ConnectionState.waiting
+                              ? '...'
+                              : connSnap.hasError
+                                  ? '0'
+                                  : connSnap.data.toString();
+
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _StatCard(label: "Projects", value: projects),
+                              _StatCard(
+                                  label: "Connections",
+                                  value: connCount), // 🟩 New stat added
+                              _StatCard(label: "Reviews", value: reviews),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 36),
