@@ -84,6 +84,94 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
     return snap.size;
   }
 
+  void _showPollDialog() {
+    final questionController = TextEditingController();
+    final optionControllers = <TextEditingController>[
+      TextEditingController(),
+      TextEditingController(),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Create a Poll'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: questionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Poll Question',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ...optionControllers.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final controller = entry.value;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: TextField(
+                          controller: controller,
+                          decoration: InputDecoration(
+                            labelText: 'Option ${i + 1}',
+                          ),
+                        ),
+                      );
+                    }),
+                    TextButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          optionControllers.add(TextEditingController());
+                        });
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Option'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final question = questionController.text.trim();
+                final options = optionControllers
+                    .map((c) => c.text.trim())
+                    .where((o) => o.isNotEmpty)
+                    .toList();
+
+                if (question.isEmpty || options.length < 2 || _me == null)
+                  return;
+
+                await _messagesCol.add({
+                  'author': _myName,
+                  'avatar': '${_me!.uid}.jpg',
+                  'text': question,
+                  'type': 'poll',
+                  'options': options,
+                  'votes': {},
+                  'timestamp': Timestamp.now(),
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Send Poll'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _pickAndSendImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -437,6 +525,17 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         text: m['text'] as String,
                                         type: m['type'] as String?, // ✅ NEW
                                         url: m['url'] as String?, // ✅ NEW
+                                        messageId:
+                                            messages[i].id, // ✅ for updating
+                                        groupName: widget.groupName,
+                                        options: m['options']
+                                            as List<dynamic>?, // 🆕
+                                        votes: m['votes'] != null &&
+                                                m['votes']
+                                                    is Map<String, dynamic>
+                                            ? Map<String, dynamic>.from(
+                                                m['votes'])
+                                            : null,
                                         fileName: m['fileName']
                                             as String?, // 📁 pass fileName here
                                         reactions: m['reactions'] != null &&
@@ -485,6 +584,11 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                   IconButton(
                     icon: const Icon(Icons.attach_file),
                     onPressed: _pickAndSendDocument, // Will define this next
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.poll_outlined), // 🗳️ Create Poll
+                    tooltip: 'Create Poll',
+                    onPressed: _showPollDialog, // ➕ We define this next
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -674,6 +778,10 @@ class _MessageBubble extends StatelessWidget {
   final Map<String, dynamic>? reactions; // ✅ NEW
   final String? type, url; // ✅ NEW: for image support
   final String? fileName; // 📁 NEW
+  final List<dynamic>? options;
+  final Map<String, dynamic>? votes;
+  final String? messageId;
+  final String groupName;
   const _MessageBubble({
     required this.author,
     required this.avatarPath,
@@ -682,6 +790,10 @@ class _MessageBubble extends StatelessWidget {
     this.url,
     this.fileName,
     this.reactions, // ✅ NEW
+    this.options,
+    this.votes,
+    required this.messageId,
+    required this.groupName,
   });
 
   String _getFileIcon(String fileName) {
@@ -693,6 +805,73 @@ class _MessageBubble extends StatelessWidget {
     if (ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png'))
       return '🖼️';
     return '📁';
+  }
+
+  Widget _buildPollContent(BuildContext context) {
+    final List<dynamic> optionsRaw = options ?? [];
+    final Map<String, dynamic> voteMap = votes ?? {};
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final userVote = uid != null ? voteMap[uid] : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 8),
+        ...List.generate(optionsRaw.length, (index) {
+          final count = voteMap.values.where((v) => v == index).length;
+          final isVoted = userVote == index;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isVoted ? Colors.green.shade100 : Colors.grey.shade200,
+                foregroundColor: Colors.black87,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed:
+                  userVote == null ? () => _submitVote(context, index) : null,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: Text(optionsRaw[index].toString())),
+                  if (voteMap.isNotEmpty)
+                    Text('$count vote${count != 1 ? 's' : ''}'),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  void _submitVote(BuildContext context, int selectedIndex) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || type != 'poll' || messageId == null) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(groupName)
+          .collection('messages')
+          .doc(messageId)
+          .update({
+        'votes.$uid': selectedIndex,
+      });
+      print('✅ Vote recorded for $uid');
+    } catch (e) {
+      print('❌ Failed to submit vote: $e');
+    }
   }
 
   Widget buildReactions(Map<String, dynamic>? reactionsMap) {
@@ -780,7 +959,9 @@ class _MessageBubble extends StatelessWidget {
                               ],
                             ),
                           )
-                        : Text(text),
+                        : type == 'poll'
+                            ? _buildPollContent(context)
+                            : Text(text),
                 buildReactions(reactions),
               ],
             ),
