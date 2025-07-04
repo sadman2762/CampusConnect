@@ -11,6 +11,8 @@ class FeedCard extends StatefulWidget {
   final String name;
   final String avatarPath;
   final String content;
+  final Map<String, dynamic>? likes;
+  final String currentUserId;
 
   const FeedCard({
     Key? key,
@@ -19,6 +21,8 @@ class FeedCard extends StatefulWidget {
     required this.name,
     required this.avatarPath,
     required this.content,
+    required this.likes,
+    required this.currentUserId,
   }) : super(key: key);
 
   @override
@@ -28,6 +32,8 @@ class FeedCard extends StatefulWidget {
 class _FeedCardState extends State<FeedCard> {
   bool _showComments = false;
   final TextEditingController _commentController = TextEditingController();
+  bool get _isLiked => widget.likes?[widget.currentUserId] == true;
+  int get _likeCount => widget.likes?.length ?? 0;
 
   CollectionReference<Map<String, dynamic>> get _commentsCol =>
       FirebaseFirestore.instance
@@ -68,6 +74,18 @@ class _FeedCardState extends State<FeedCard> {
     });
 
     _commentController.clear();
+  }
+
+  Future<void> _toggleLike() async {
+    final docRef =
+        FirebaseFirestore.instance.collection('feed').doc(widget.postId);
+
+    final isCurrentlyLiked = widget.likes?[widget.currentUserId] == true;
+
+    await docRef.update({
+      'likes.${widget.currentUserId}':
+          isCurrentlyLiked ? FieldValue.delete() : true,
+    });
   }
 
   @override
@@ -138,6 +156,19 @@ class _FeedCardState extends State<FeedCard> {
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 12),
+            Row(
+              children: [
+                IconButton(
+                  icon: Icon(
+                    _isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: _isLiked ? Colors.red : Colors.grey,
+                  ),
+                  onPressed: _toggleLike,
+                ),
+                Text('$_likeCount likes'),
+              ],
+            ),
+            const SizedBox(height: 8),
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _commentsStream,
               builder: (ctx, snap) {

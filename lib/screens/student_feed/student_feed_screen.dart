@@ -54,6 +54,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
       'avatar': avatar,
       'content': content,
       'timestamp': Timestamp.now(),
+      'likes': {},
     });
 
     _statusController.clear();
@@ -265,6 +266,10 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                           name: data['name'] as String,
                           avatarPath: data['avatar'] as String,
                           content: data['content'] as String,
+                          likes:
+                              data['likes'] as Map<String, dynamic>?, // 👈 new
+                          currentUserId:
+                              FirebaseAuth.instance.currentUser!.uid, // 👈 new
                         );
                       },
                     );

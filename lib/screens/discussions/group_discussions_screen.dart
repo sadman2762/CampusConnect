@@ -403,8 +403,21 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                     children: [
                       // 🔄 Replaced title + search layout to a single row
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Expanded(
+                          // 👤 Group Name
+                          Text(
+                            widget.groupName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // 🔍 Search Field with Fixed Width
+                          SizedBox(
+                            width: 220, // adjust as needed
                             child: TextField(
                               controller: _searchController,
                               decoration: InputDecoration(
@@ -418,14 +431,18 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                   },
                                 ),
                                 border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                                 contentPadding:
                                     const EdgeInsets.symmetric(vertical: 0),
                               ),
                               onChanged: (_) => setState(() {}),
                             ),
                           ),
+
                           const SizedBox(width: 8),
+
+                          // 📂 Shared Resources Button with Count
                           FutureBuilder<int>(
                             future: _countSharedResources(),
                             builder: (context, snapshot) {
@@ -441,7 +458,8 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => SharedResourcesScreen(
-                                              groupName: widget.groupName),
+                                            groupName: widget.groupName,
+                                          ),
                                         ),
                                       );
                                     },
@@ -452,7 +470,7 @@ class _GroupDiscussionsScreenState extends State<GroupDiscussionsScreen> {
                                       top: 4,
                                       child: Container(
                                         padding: const EdgeInsets.all(4),
-                                        decoration: BoxDecoration(
+                                        decoration: const BoxDecoration(
                                           color: Colors.red,
                                           shape: BoxShape.circle,
                                         ),
