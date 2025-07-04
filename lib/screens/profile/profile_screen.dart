@@ -13,6 +13,17 @@ class ProfileScreen extends StatelessWidget {
 
   static const routeName = '/profile';
 
+  Future<int> _getAcceptedConnectionCount(String userId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('connections')
+        .doc(userId)
+        .collection('requests')
+        .where('status', isEqualTo: 'accepted')
+        .get();
+
+    return snapshot.size;
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser!;
@@ -170,8 +181,20 @@ class ProfileScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      _StatCard(label: "Connections", value: "24"),
+                    children: [
+                      FutureBuilder<int>(
+                        future: _getAcceptedConnectionCount(user.uid),
+                        builder: (context, connSnap) {
+                          final value = connSnap.connectionState ==
+                                  ConnectionState.waiting
+                              ? '...'
+                              : (connSnap.hasError
+                                  ? '0'
+                                  : connSnap.data.toString());
+
+                          return _StatCard(label: "Connections", value: value);
+                        },
+                      ),
                       _StatCard(label: "Courses", value: "6"),
                       _StatCard(label: "Projects", value: "3"),
                     ],
