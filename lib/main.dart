@@ -39,6 +39,7 @@ import 'screens/settings/change_password_screen.dart';
 import 'screens/settings/notifications_settings_screen.dart';
 import 'screens/settings/privacy_settings_screen.dart';
 import 'screens/settings/theme_settings_screen.dart';
+import 'screens/notifications/notification_screen.dart';
 
 // Help
 import 'screens/help/help_center_screen.dart';
@@ -106,6 +107,7 @@ class CampusConnectApp extends StatelessWidget {
                 const PrivacySettingsScreen(),
             ThemeSettingsScreen.routeName: (_) => const ThemeSettingsScreen(),
             HelpCenterScreen.routeName: (_) => const HelpCenterScreen(),
+            NotificationScreen.routeName: (ctx) => const NotificationScreen(),
           },
 
           // Dynamic / argument-based routes

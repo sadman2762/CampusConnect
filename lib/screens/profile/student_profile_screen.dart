@@ -60,6 +60,20 @@ class _StudentProfileScreenState extends State<StudentProfileScreen> {
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'pending',
       });
+      // 🔔 Add notification for the receiver
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(targetId)
+          .collection('items')
+          .add({
+        'type': 'connection_request',
+        'senderId': currentUser.uid,
+        'senderName': currentUser.displayName ??
+            currentUser.email?.split('@').first ??
+            'Someone',
+        'timestamp': FieldValue.serverTimestamp(),
+        'seen': false,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Connection request sent!")),
