@@ -22,6 +22,7 @@ class StudentFeedScreen extends StatefulWidget {
 class _StudentFeedScreenState extends State<StudentFeedScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _statusController = TextEditingController();
+  bool _isEvent = false;
 
   CollectionReference<Map<String, dynamic>> get _feedCol =>
       FirebaseFirestore.instance.collection('feed');
@@ -29,7 +30,7 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
   Stream<QuerySnapshot<Map<String, dynamic>>> get _feedStream =>
       _feedCol.orderBy('timestamp', descending: true).snapshots();
 
-  Future<void> _postStatus() async {
+  Future<void> _postStatus({bool isEvent = false}) async {
     final content = _statusController.text.trim();
     if (content.isEmpty) return;
 
@@ -55,6 +56,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
       'content': content,
       'timestamp': Timestamp.now(),
       'likes': {},
+      'type': isEvent ? 'event' : 'normal', // ✅ THIS LINE IS MISSING
+      'votes': isEvent ? {} : null, // 🟨 Initialize empty vote map
     });
 
     _statusController.clear();
@@ -235,9 +238,26 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Normal post
                   ElevatedButton(
-                    onPressed: _postStatus,
-                    child: const Icon(Icons.send),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.pink,
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(12),
+                    ),
+                    onPressed: () => _postStatus(isEvent: false),
+                    child: const Icon(Icons.send, color: Colors.white),
+                  ),
+                  const SizedBox(width: 8),
+                  // Event post
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(12),
+                    ),
+                    onPressed: () => _postStatus(isEvent: true),
+                    child: const Icon(Icons.event, color: Colors.white),
                   ),
                 ],
               ),
@@ -270,6 +290,8 @@ class _StudentFeedScreenState extends State<StudentFeedScreen> {
                               data['likes'] as Map<String, dynamic>?, // 👈 new
                           currentUserId:
                               FirebaseAuth.instance.currentUser!.uid, // 👈 new
+                          type: data['type'] ?? 'normal',
+                          votes: data['votes'] as Map<String, dynamic>?,
                         );
                       },
                     );

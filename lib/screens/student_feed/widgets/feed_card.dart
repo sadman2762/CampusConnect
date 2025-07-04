@@ -13,6 +13,8 @@ class FeedCard extends StatefulWidget {
   final String content;
   final Map<String, dynamic>? likes;
   final String currentUserId;
+  final String type;
+  final Map<String, dynamic>? votes;
 
   const FeedCard({
     Key? key,
@@ -23,6 +25,8 @@ class FeedCard extends StatefulWidget {
     required this.content,
     required this.likes,
     required this.currentUserId,
+    required this.type,
+    required this.votes,
   }) : super(key: key);
 
   @override
@@ -34,6 +38,7 @@ class _FeedCardState extends State<FeedCard> {
   final TextEditingController _commentController = TextEditingController();
   bool get _isLiked => widget.likes?[widget.currentUserId] == true;
   int get _likeCount => widget.likes?.length ?? 0;
+  String? get _myVote => widget.votes?[widget.currentUserId] as String?;
 
   CollectionReference<Map<String, dynamic>> get _commentsCol =>
       FirebaseFirestore.instance
@@ -43,6 +48,27 @@ class _FeedCardState extends State<FeedCard> {
 
   Stream<QuerySnapshot<Map<String, dynamic>>> get _commentsStream =>
       _commentsCol.orderBy('timestamp').snapshots();
+
+  Future<void> _vote(String option) async {
+    final docRef =
+        FirebaseFirestore.instance.collection('feed').doc(widget.postId);
+
+    await docRef.update({
+      'votes.${widget.currentUserId}': option,
+    });
+  }
+
+  int _voteCount(String type) {
+    return widget.votes?.values.where((v) => v == type).length ?? 0;
+  }
+
+  int get _totalVotes => widget.votes?.length ?? 0;
+
+  double _votePercentage(String type) {
+    final count = _voteCount(type);
+    if (_totalVotes == 0) return 0;
+    return (count / _totalVotes);
+  }
 
   Future<void> _postComment() async {
     final text = _commentController.text.trim();
@@ -102,6 +128,56 @@ class _FeedCardState extends State<FeedCard> {
     } else {
       return const AssetImage('assets/images/default_avatar.jpg');
     }
+  }
+
+  Widget _pollOption(String type, IconData icon, String label) {
+    final isSelected = _myVote == type;
+    final percentage = _votePercentage(type);
+    final percentText = (_votePercentage(type) * 100).toStringAsFixed(0);
+
+    return InkWell(
+      onTap: () => _vote(type),
+      child: Stack(
+        children: [
+          Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.blue.shade100 : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: FractionallySizedBox(
+              widthFactor: percentage,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.blue : Colors.grey,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          Container(
+            height: 40,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(icon,
+                    size: 18, color: isSelected ? Colors.white : Colors.black),
+                const SizedBox(width: 8),
+                Text(
+                  '$label (${_voteCount(type)}) - $percentText%',
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black,
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -169,6 +245,18 @@ class _FeedCardState extends State<FeedCard> {
               ],
             ),
             const SizedBox(height: 8),
+            if (widget.type == 'event') ...[
+              const SizedBox(height: 8),
+              Column(
+                children: [
+                  _pollOption('going', Icons.check_circle, 'Going'),
+                  const SizedBox(height: 6),
+                  _pollOption('not_going', Icons.cancel, 'Not Going'),
+                  const SizedBox(height: 6),
+                  _pollOption('maybe', Icons.help_outline, 'Maybe'),
+                ],
+              ),
+            ],
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: _commentsStream,
               builder: (ctx, snap) {
